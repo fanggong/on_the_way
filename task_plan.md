@@ -1,70 +1,63 @@
-# Task Plan: on_the_way v0.1.0 Implementation
+# Task Plan: on_the_way v0.2.0 Implementation
 
 ## Goal
-Deliver a runnable v0.1.0 baseline for `poc_signal` covering API + connector + dbt + Docker + OpenMetadata + full React Native iOS native project + verification scripts + supporting docs.
+Deliver a runnable `v0.2.0` iOS UI/UX release based on `v0.1.0` baseline, focused on Home redesign, MUJI-style design tokens, and 8-theme navigation interactions without backend/data changes.
 
 ## Current Phase
-Phase 5
+Completed
 
 ## Phases
 
 ### Phase 1: Requirements & Discovery
-- [x] Read `docs/product/product_v0.1.0.md`
-- [x] Read `docs/frame/frame_v1.0.md`
-- [x] Extract mandatory deliverables and constraints into findings
+- [x] Read `docs/product/product_v0.2.0.md`
+- [x] Read related docs (`docs/frame/frame_v1.0.md`, `docs/api/api_v0.1.0.md`, `docs/run/交付物启动与验收说明_v0.1.0.md`)
+- [x] Inspect current React Native iOS app structure and entry flow
+- [x] Capture constraints and potential conflicts into findings
 - **Status:** complete
 
-### Phase 2: Planning & Project Skeleton
-- [x] Create target directory structure for apps/services/data/infra/scripts/docs
-- [x] Define API and DB model mapping from product document
-- [x] Define dbt model graph and test strategy
-- [x] Define Docker composition and startup flow
+### Phase 2: UI/UX Architecture & Implementation
+- [x] Create MUJI design tokens (`colors/typography/spacing/radius/shadow/motion`)
+- [x] Add theme definitions (8 topics + copy + icon mapping)
+- [x] Implement `HomeScreen` with:
+  - top brand section + date
+  - horizontal 8-topic nav bar
+  - 2x4 card grid
+  - footer statement
+- [x] Implement unified "coming soon" interaction feedback (no API calls)
+- [x] Switch `App.tsx` first screen to Home and preserve v0.1.0 pages as debug-only entry
+- [x] Ensure a11y/touch target and 375/430 width adaptation
 - **Status:** complete
 
-### Phase 3: Implementation
-- [x] Implement FastAPI service with required v1 endpoints and health checks
-- [x] Implement PostgreSQL schema bootstrap and idempotent raw ingest
-- [x] Implement connector worker (5-min deterministic random signal + retry)
-- [x] Implement dbt project (raw -> canonical -> domain -> mart + tests)
-- [x] Implement React Native app logic (manual ingest + daily summary)
-- [x] Integrate full RN native project scaffold (`ios/` + `Podfile` + native entry files)
-- [x] Implement Docker compose and env templates
-- [x] Implement `scripts/dev/verify_v0_1_0.sh`
-- [x] Implement `scripts/dev/run_openmetadata_ingestion.sh`
-- [x] Add developer docs for setup and runbook
-- **Status:** complete
-
-### Phase 4: Testing & Verification
-- [x] Run local validation checks for API
-- [x] Run lint/static checks for Python and scripts
-- [x] Run dbt build/docs/ingestion checks in Docker
-- [x] Verify documentation consistency with code
-- [x] Run `bash scripts/dev/verify_v0_1_0.sh` end-to-end and pass
-- **Status:** complete
-
-### Phase 5: Delivery
-- [x] Summarize completed items vs v0.1.0 acceptance checklist
-- [x] Call out risks/gaps and decisions requiring user confirmation
-- [x] Clean dead code and generated artifacts for v0.1.0 handoff
-- [x] Finalize v0.1.0 docs consistency (startup, verification, links)
-- [x] Deliver final report with changed files and next steps
+### Phase 3: Regression & Documentation
+- [x] Update iOS/readme docs for v0.2.0 home behavior and debug access
+- [x] Update product doc if implementation-confirmed deltas exist
+- [x] Run feasible checks (Jest/lint) and report limitations
+- [x] Final delivery summary against v0.2.0 acceptance checklist
 - **Status:** complete
 
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
-| Keep `poc_signal` as independent bounded context and avoid 8-system business modeling | Explicitly required by product v0.1.0 scope. |
-| Use SQLAlchemy + raw SQL for ingest/idempotency behavior | Fits FastAPI + Postgres requirements and keeps data-path logic transparent. |
-| Use OpenMetadata with JWT-based ingestion auth in scripts | Required by OpenMetadata 1.11 ingestion workflow and avoids manual token copy steps. |
-| Keep OpenMetadata server healthcheck as TCP probe inside container | Server image lacks `curl`; TCP probe keeps compose health status reliable. |
-| Build RN app from official CLI scaffold, then merge existing business UI/logic | Satisfies “full iOS native project” requirement with standard `ios` project structure. |
-| Remove unused API schema/helper code and runtime artifacts before handoff | Reduces maintenance noise and avoids shipping generated/local-only files in v0.1.0. |
+| Keep all server/data layers untouched | Product v0.2.0 explicitly limits scope to iOS UI/UX. |
+| Keep v0.1.0 ingest/query pages as hidden debug entry | Product requires retaining access for integration while not exposing in home/main nav. |
+| Implement topic icons as built-in monochrome vector-like RN components | Avoids introducing new dependency while delivering consistent non-placeholder icon assets in this version. |
+| Mark v0.2.0 docs as accepted/completed after user acceptance confirmation | Keeps delivery documentation consistent with actual project lifecycle state. |
+
+## Open Questions for User Confirmation
+| Question | Current Assumption |
+|----------|--------------------|
+| Do you have a fixed external icon pack to use for the 8 topics? | No fixed pack. Implement coded icons first and replace later if assets are provided. |
+
+## Final Closure
+- v0.2.0 acceptance completed by user on 2026-02-26.
+- Final wrap-up executed:
+  - dead code scan and minor redundancy cleanup
+  - docs status alignment to accepted/completed
+  - generated runtime artifacts cleanup
 
 ## Errors Encountered
 | Error | Resolution |
 |-------|------------|
-| Docker image pull/network instability | Added mirror/proxy support (`IMAGE_MIRROR_PREFIX`, `HTTP_PROXY/HTTPS_PROXY/ALL_PROXY`) and retried successfully. |
-| API ingest returned 500 due `:request_id::uuid` SQL syntax | Replaced with `cast(:request_id as uuid)` in ingest/audit SQL. |
-| OpenMetadata ingestion failed (`authProvider: no-auth` invalid) | Switched ingestion workflow auth to `openmetadata` + JWT token fetched by script login. |
-| OpenMetadata server unhealthy due missing `curl` in image | Replaced healthcheck with bash `/dev/tcp` probe. |
-| dbt ingestion config schema mismatch (`dbtConfigType` missing) | Updated dbt ingestion YAML to `dbtConfigType: local`. |
+| `apps/ios/src/screens/PocScreen.tsx` not found while probing old entry | Confirmed current app uses `ManualInputScreen` + `DailySummaryScreen`; plan updated accordingly. |
+| `npm test` failed due AsyncStorage native module in Jest | Added official AsyncStorage Jest mock in `apps/ios/__tests__/App.test.tsx`. |
+| `npx tsc --noEmit` flagged route narrowing and `jest` global typing | Removed impossible branch comparison and imported `jest` from `@jest/globals`. |

@@ -1,33 +1,56 @@
 import React, {useState} from 'react';
-import {SafeAreaView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Pressable, SafeAreaView, StyleSheet, Text, View} from 'react-native';
 
 import DailySummaryScreen from './src/screens/DailySummaryScreen';
+import HomeScreen from './src/screens/HomeScreen';
 import ManualInputScreen from './src/screens/ManualInputScreen';
+import {tokens} from './src/theme/tokens';
 
-type Tab = 'manual' | 'summary';
+type Route = 'home' | 'manual' | 'summary';
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('manual');
+  const [route, setRoute] = useState<Route>('home');
+
+  if (route === 'home') {
+    return <HomeScreen onOpenDebug={() => setRoute('manual')} />;
+  }
+
+  const title = route === 'manual' ? '调试录入' : '调试查询';
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>On The Way v0.1.0</Text>
+        <Text style={styles.headerTitle}>{title}</Text>
         <View style={styles.tabRow}>
-          <TouchableOpacity
-            style={[styles.tab, tab === 'manual' ? styles.tabActive : null]}
-            onPress={() => setTab('manual')}>
-            <Text style={styles.tabText}>手工录入</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, tab === 'summary' ? styles.tabActive : null]}
-            onPress={() => setTab('summary')}>
-            <Text style={styles.tabText}>结果查看</Text>
-          </TouchableOpacity>
+          <Pressable
+            style={({pressed}) => [styles.tab, pressed ? styles.tabPressed : null]}
+            onPress={() => setRoute('home')}>
+            <Text style={styles.tabText}>首页</Text>
+          </Pressable>
+
+          <Pressable
+            style={({pressed}) => [
+              styles.tab,
+              route === 'manual' ? styles.tabActive : null,
+              pressed ? styles.tabPressed : null,
+            ]}
+            onPress={() => setRoute('manual')}>
+            <Text style={[styles.tabText, route === 'manual' ? styles.tabTextActive : null]}>手工录入</Text>
+          </Pressable>
+
+          <Pressable
+            style={({pressed}) => [
+              styles.tab,
+              route === 'summary' ? styles.tabActive : null,
+              pressed ? styles.tabPressed : null,
+            ]}
+            onPress={() => setRoute('summary')}>
+            <Text style={[styles.tabText, route === 'summary' ? styles.tabTextActive : null]}>结果查看</Text>
+          </Pressable>
         </View>
       </View>
 
-      <View style={styles.body}>{tab === 'manual' ? <ManualInputScreen /> : <DailySummaryScreen />}</View>
+      <View style={styles.body}>{route === 'manual' ? <ManualInputScreen /> : <DailySummaryScreen />}</View>
     </SafeAreaView>
   );
 }
@@ -35,35 +58,50 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: tokens.color.bgCanvas,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: tokens.spacing.md,
+    paddingTop: tokens.spacing.xs,
     paddingBottom: 10,
-    backgroundColor: '#111827',
+    backgroundColor: tokens.color.bgSurface,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.color.borderDefault,
   },
   headerTitle: {
-    color: '#f9fafb',
+    color: tokens.color.textPrimary,
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 10,
   },
   tabRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: tokens.spacing.xs,
   },
   tab: {
-    backgroundColor: '#374151',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: tokens.color.bgCard,
+    borderRadius: tokens.radius.pill,
+    paddingHorizontal: tokens.spacing.sm,
+    minHeight: 40,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: tokens.color.borderDefault,
   },
   tabActive: {
-    backgroundColor: '#059669',
+    backgroundColor: tokens.color.bgSurface,
+    borderColor: tokens.color.accentSoft,
+  },
+  tabPressed: {
+    opacity: 0.88,
+    transform: [{scale: 0.98}],
   },
   tabText: {
-    color: '#f9fafb',
+    color: tokens.color.textSecondary,
+    fontWeight: '500',
+    fontSize: tokens.typography.caption,
+  },
+  tabTextActive: {
+    color: tokens.color.textPrimary,
     fontWeight: '600',
   },
   body: {

@@ -84,3 +84,85 @@
 
 ### Residual Notes
 - If `dbt-runner` container remains active, `data/dbt/target`、`data/dbt/logs`、`data/dbt/.user.yml` can be auto-generated again; ignore rules are already added.
+
+## Session: 2026-02-26 (v0.2.0 UI/UX Development)
+
+### Current Status
+- **Phase:** Completed
+- **Started:** 2026-02-26
+- **Scope:** iOS home redesign only, no backend/data changes
+
+### Actions Taken
+- Read and parsed `docs/product/product_v0.2.0.md` full constraints.
+- Verified related baseline docs (`frame/api/runbook`) and iOS app current structure.
+- Executed skill-driven workflow:
+  - `planning-with-files`
+  - `ui-ux-pro-max`
+  - `vercel-react-native-skills`
+- Collected RN implementation constraints:
+  - prefer `Pressable` over touchable components
+  - prefer GPU-friendly animation properties (`transform`/`opacity`)
+  - ensure safe-area compatible scroll layout
+  - avoid JSX falsy `&&` rendering pitfalls in RN
+- Rebased planning files to v0.2.0 objective and phase tracking.
+
+### Pending
+- None.
+
+### Delivered
+- Added MUJI-aligned token system and topic config.
+- Added new home UI components and screen:
+  - `ThemeNavBar`
+  - `ThemeCard`
+  - `ThemeIcon`
+  - `HomeScreen`
+- Switched `App.tsx` first screen to Home.
+- Added hidden debug access path:
+  - long-press home brand area -> debug pages (`手工录入` / `结果查看`)
+- Updated iOS/docs for v0.2.0 run and acceptance flow.
+- Bumped iOS package version to `0.2.0`.
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `npm run lint` (apps/ios) | RN TS/JS lint passes | passed | PASS |
+| `npm test -- --watch=false` (apps/ios) | Jest passes | passed | PASS |
+| `npx tsc --noEmit` (apps/ios) | Type check passes | passed | PASS |
+
+### Errors & Resolution
+| Error | Resolution |
+|-------|------------|
+| Jest failed with AsyncStorage native module null | Added AsyncStorage official Jest mock in `__tests__/App.test.tsx`. |
+| TypeScript route narrowing warning in `App.tsx` | Removed impossible selected-state comparison in debug-only branch. |
+| TypeScript test file missing `jest` type | Imported `jest` from `@jest/globals`. |
+
+## Session: 2026-02-26 (Final Wrap-up)
+
+### Current Status
+- **Phase:** Completed
+- **Scope:** dead code cleanup + final documentation polish
+
+### Actions Taken
+- Performed dead code scan on iOS TS sources:
+  - orphan-file scan across `apps/ios/src`
+  - strict no-unused check with `npx tsc --noEmit --noUnusedLocals --noUnusedParameters`
+- Simplified redundant code in `apps/ios/App.tsx`:
+  - removed unnecessary `useMemo`
+  - reduced debug title computation to direct branch expression
+- Updated version docs to acceptance-complete state:
+  - `docs/product/product_v0.2.0.md`
+  - `docs/run/交付物启动与验收说明_v0.2.0.md`
+  - `apps/ios/README.md`
+  - `README.md`
+- Cleaned generated dbt runtime artifacts:
+  - `data/dbt/target`
+  - `data/dbt/logs`
+  - `data/dbt/.user.yml`
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `npx tsc --noEmit --noUnusedLocals --noUnusedParameters` | no unused TS locals/params in iOS app | passed | PASS |
+| `npx tsc --noEmit` | iOS type check passes after cleanup | passed | PASS |
+| `npm run lint` | iOS lint passes after cleanup | passed | PASS |
+| `npm test -- --watch=false` | iOS Jest smoke test passes | passed | PASS |
