@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from hashlib import sha256
 
 from sqlalchemy import text
@@ -145,7 +145,7 @@ def ingest_signal(
             {
                 "source_id": source_id,
                 "external_id": external_id,
-                "occurred_at": occurred_at.astimezone(UTC),
+                "occurred_at": occurred_at,
                 "payload_json": json.dumps(payload, ensure_ascii=True),
                 "payload_hash": payload_hash,
                 "request_id": request_id,

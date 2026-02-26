@@ -1,4 +1,4 @@
-# API Service (v0.1.0)
+# API Service (v0.3.0)
 
 FastAPI service for `poc_signal` ingestion, annotation and query.
 
@@ -6,6 +6,7 @@ FastAPI service for `poc_signal` ingestion, annotation and query.
 
 - `POST /v1/ingest/manual-signal`
 - `POST /v1/ingest/connector-signal`
+- `POST /v1/ingest/connector-health`
 - `POST /v1/annotation`
 - `GET /v1/poc/signals`
 - `GET /v1/poc/daily-summary`

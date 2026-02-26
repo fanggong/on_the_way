@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, date
+from datetime import date, datetime
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -11,6 +12,7 @@ from app.db.session import get_db
 from app.schemas.annotation import AnnotationCreateRequest
 from app.schemas.ingest import (
     ConnectorSignalIngestRequest,
+    HealthConnectorIngestRequest,
     IngestResponse,
     ManualSignalIngestRequest,
 )
@@ -23,6 +25,7 @@ from app.services.query_service import (
 )
 
 router = APIRouter(prefix="/v1", tags=["v1"])
+SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 
 
 @router.get("/health/live")
@@ -30,7 +33,7 @@ def health_live() -> dict:
     return {
         "status": "ok",
         "service": "api-service",
-        "time": datetime.now(UTC).isoformat(),
+        "time": datetime.now(SHANGHAI_TZ).isoformat(),
     }
 
 
@@ -77,6 +80,40 @@ def ingest_manual_signal(
 @router.post("/ingest/connector-signal", response_model=IngestResponse)
 def ingest_connector_signal(
     body: ConnectorSignalIngestRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    request_id = str(uuid4())
+    try:
+        result = ingest_signal(
+            db,
+            request_id=request_id,
+            source_id=body.source_id,
+            external_id=body.external_id,
+            occurred_at=body.occurred_at,
+            payload=body.payload.model_dump(mode="json"),
+        )
+        return {
+            "status": "ok",
+            "raw_id": result.raw_id,
+            "ingested_at": result.ingested_at,
+            "idempotent": result.idempotent,
+        }
+    except AppError as exc:
+        register_ingest_error(
+            db,
+            request_id=request_id,
+            source_id=body.source_id,
+            external_id=body.external_id,
+            code=exc.code,
+            message=exc.message,
+        )
+        exc.request_id = request_id
+        raise
+
+
+@router.post("/ingest/connector-health", response_model=IngestResponse)
+def ingest_connector_health(
+    body: HealthConnectorIngestRequest,
     db: Session = Depends(get_db),
 ) -> dict:
     request_id = str(uuid4())

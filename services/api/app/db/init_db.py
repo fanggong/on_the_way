@@ -7,6 +7,7 @@ from app.db.session import engine
 INIT_SQL = """
 create schema if not exists public;
 set search_path = public, pg_catalog;
+set timezone = 'Asia/Shanghai';
 create extension if not exists pgcrypto with schema public;
 
 create schema if not exists raw;
@@ -73,6 +74,13 @@ create table if not exists app.connector_health (
 insert into app.connector_health (id, last_status, success_count, failure_count)
 values (1, 'never', 0, 0)
 on conflict (id) do nothing;
+
+do $$
+declare
+  db_name text := current_database();
+begin
+  execute format('alter database %I set timezone to %L', db_name, 'Asia/Shanghai');
+end $$;
 """
 
 

@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-otw}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-otw_dev_password}
       POSTGRES_DB: ${POSTGRES_DB:-otw_dev}
+      TZ: ${DB_TIMEZONE:-Asia/Shanghai}
+      PGTZ: ${DB_TIMEZONE:-Asia/Shanghai}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -52,9 +54,20 @@ services:
     container_name: otw-connector
     environment:
       API_BASE_URL: ${CONNECTOR_API_BASE_URL:-http://api-service:8000}
-      CONNECTOR_INTERVAL_SECONDS: ${CONNECTOR_INTERVAL_SECONDS:-300}
-      CONNECTOR_SOURCE_ID: ${CONNECTOR_SOURCE_ID:-signal_random_connector}
+      CONNECTOR_INGEST_PATH: ${CONNECTOR_INGEST_PATH:-/v1/ingest/connector-health}
+      CONNECTOR_INTERVAL_SECONDS: ${CONNECTOR_INTERVAL_SECONDS:-3600}
+      CONNECTOR_VERSION: ${CONNECTOR_VERSION:-v0.3.0}
+      CONNECTOR_REQUEST_TIMEOUT_SECONDS: ${CONNECTOR_REQUEST_TIMEOUT_SECONDS:-10}
       CONNECTOR_RETRY_ATTEMPTS: ${CONNECTOR_RETRY_ATTEMPTS:-3}
+      GARMIN_EMAIL: ${GARMIN_EMAIL:-}
+      GARMIN_PASSWORD: ${GARMIN_PASSWORD:-}
+      GARMIN_TOKEN_DIR: ${GARMIN_TOKEN_DIR:-/tmp/.garminconnect}
+      GARMIN_FETCH_WINDOW_DAYS: ${GARMIN_FETCH_WINDOW_DAYS:-3}
+      GARMIN_BACKFILL_DAYS: ${GARMIN_BACKFILL_DAYS:-10}
+      GARMIN_METRICS: ${GARMIN_METRICS:-all}
+      GARMIN_TIMEZONE: ${GARMIN_TIMEZONE:-Asia/Shanghai}
+      GARMIN_IS_CN: ${GARMIN_IS_CN:-true}
+      GARMIN_MFA_CODE: ${GARMIN_MFA_CODE:-}
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://otw:otw_dev_password@postgres:5432/otw_dev}
     depends_on:
       api-service:
