@@ -1,0 +1,25 @@
+source:
+  type: dbt
+  serviceName: otw_postgres
+  sourceConfig:
+    config:
+      type: DBT
+      dbtConfigSource:
+        dbtConfigType: local
+        dbtManifestFilePath: /data/dbt/target/manifest.json
+        dbtRunResultsFilePath: /data/dbt/target/run_results.json
+        dbtCatalogFilePath: /data/dbt/target/catalog.json
+      dbtUpdateDescriptions: true
+      includeTags: true
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://openmetadata-server:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "${OPENMETADATA_JWT_TOKEN}"

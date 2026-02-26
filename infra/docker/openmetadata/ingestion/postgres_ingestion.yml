@@ -1,0 +1,35 @@
+source:
+  type: postgres
+  serviceName: otw_postgres
+  serviceConnection:
+    config:
+      type: Postgres
+      hostPort: postgres:5432
+      username: otw
+      authType:
+        password: otw_dev_password
+      database: otw_dev
+      schemaFilterPattern:
+        includes:
+          - raw
+          - canonical
+          - domain_poc_signal
+          - mart_poc_signal
+          - annotation
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      includeTables: true
+      includeViews: true
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://openmetadata-server:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "${OPENMETADATA_JWT_TOKEN}"

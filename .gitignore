@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node / React Native
+node_modules/
+apps/ios/.bundle/
+apps/ios/ios/Pods/
+apps/ios/ios/build/
+apps/ios/vendor/
+
+# Build artifacts
+.DS_Store
+*.log
+
+# Environment
+.env
+infra/docker/.env
+apps/ios/.env
+
+# dbt artifacts
+data/dbt/target/
+data/dbt/logs/
+data/dbt/.user.yml
+
+# IDE
+.vscode/
+.idea/

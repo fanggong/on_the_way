@@ -1,0 +1,12 @@
+on_the_way:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DBT_DB_HOST', 'postgres') }}"
+      user: "{{ env_var('DBT_DB_USER', 'otw') }}"
+      password: "{{ env_var('DBT_DB_PASSWORD', 'otw_dev_password') }}"
+      port: "{{ env_var('DBT_DB_PORT', '5432') | int }}"
+      dbname: "{{ env_var('DBT_DB_NAME', 'otw_dev') }}"
+      schema: public
+      threads: 4

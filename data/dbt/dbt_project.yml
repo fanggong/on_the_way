@@ -1,0 +1,23 @@
+name: on_the_way
+version: 0.1.0
+config-version: 2
+
+profile: on_the_way
+
+model-paths: ["models"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+
+models:
+  on_the_way:
+    +materialized: view
+    raw_to_canonical:
+      +schema: canonical
+      +materialized: table
+    canonical_to_domain_poc_signal:
+      +schema: domain_poc_signal
+      +materialized: table
+    domain_poc_signal_to_mart:
+      +schema: mart_poc_signal
+      +materialized: table

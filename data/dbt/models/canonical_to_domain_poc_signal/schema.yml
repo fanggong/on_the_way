@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: fct_domain_poc_signal__signal_event
+    columns:
+      - name: signal_event_id
+        tests:
+          - not_null
+          - unique
+      - name: event_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('int_canonical__event')
+              field: event_id
+      - name: source_type
+        tests:
+          - accepted_values:
+              values: ['manual', 'connector']
+      - name: value_num
+        tests:
+          - not_null

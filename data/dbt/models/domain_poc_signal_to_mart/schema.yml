@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: mart_poc_signal__signal_daily_summary
+    columns:
+      - name: stat_date
+        tests:
+          - not_null
+          - unique
+      - name: event_count
+        tests:
+          - not_null
+      - name: manual_count
+        tests:
+          - not_null
+      - name: connector_count
+        tests:
+          - not_null
