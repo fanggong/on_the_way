@@ -1,5 +1,5 @@
 name: on_the_way
-version: 0.1.0
+version: 0.3.1
 config-version: 2
 
 profile: on_the_way
@@ -11,13 +11,16 @@ macro-paths: ["macros"]
 
 models:
   on_the_way:
+    +persist_docs:
+      relation: true
+      columns: true
     +materialized: view
     raw_to_canonical:
       +schema: canonical
       +materialized: table
-    canonical_to_domain_poc_signal:
-      +schema: domain_poc_signal
+    canonical_to_domain_health:
+      +schema: domain_health
       +materialized: table
-    domain_poc_signal_to_mart:
-      +schema: mart_poc_signal
+    domain_health_to_mart:
+      +schema: mart
       +materialized: table

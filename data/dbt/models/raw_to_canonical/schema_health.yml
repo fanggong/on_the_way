@@ -1,0 +1,269 @@
+version: 2
+
+models:
+  - name: stg_raw__health_event
+    description: Garmin 健康 Raw 事件分层视图，按 `source_id=garmin_connect_health` 过滤并拆出标准字段。
+    columns:
+      - name: raw_id
+        description: Raw 主键，唯一标识单条接入事件。
+        tests:
+          - not_null
+          - unique
+      - name: source_id
+        description: 数据来源标识，v0.3.1 固定为 `garmin_connect_health`。
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['garmin_connect_health']
+      - name: external_id
+        description: 连接器生成的幂等外部键。
+        tests:
+          - not_null
+      - name: idempotency_key
+        description: 由 `source_id::external_id` 组成的幂等组合键。
+        tests:
+          - not_null
+      - name: occurred_at
+        description: 业务事件时间（按 metric_date 对齐到 Asia/Shanghai 当日零点）。
+        tests:
+          - not_null
+      - name: ingested_at
+        description: Raw 入库时间。
+        tests:
+          - not_null
+      - name: payload_json
+        description: 原始请求 payload（完整 JSON）。
+        tests:
+          - not_null
+      - name: attributes_json
+        description: 与 payload_json 保持一致的属性镜像字段。
+        tests:
+          - not_null
+      - name: connector
+        description: 连接器标识，固定值 `garmin_connect`。
+      - name: connector_version
+        description: 连接器版本号。
+      - name: account_ref
+        description: 脱敏账号标识（sha 摘要）。
+      - name: metric_type
+        description: Garmin 指标类型（32 项契约枚举）。
+      - name: metric_date
+        description: 指标业务日期（YYYY-MM-DD）。
+      - name: timezone
+        description: 指标时区，默认 Asia/Shanghai。
+      - name: fetched_at
+        description: 连接器抓取 Garmin 的时间戳。
+      - name: api_method
+        description: 本次抓取使用的 Garmin SDK 方法名（可空）。
+      - name: data_json
+        description: payload 内 `data` 原始对象。
+
+  - name: int_canonical__health_event
+    description: 健康事件标准主表，保证与 Raw 健康记录 1:1 对齐。
+    columns:
+      - name: health_event_id
+        description: 健康事件主键，默认等于 raw_id。
+        tests:
+          - not_null
+          - unique
+      - name: raw_id
+        description: 回溯 Raw 主键。
+        tests:
+          - not_null
+          - unique
+      - name: source_id
+        description: 数据来源标识。
+        tests:
+          - not_null
+      - name: external_id
+        description: 幂等外部键。
+        tests:
+          - not_null
+      - name: account_ref
+        description: 脱敏账号标识。
+      - name: metric_type
+        description: 健康指标类型。
+        tests:
+          - not_null
+      - name: metric_date
+        description: 业务日期。
+      - name: timezone
+        description: 业务时区。
+      - name: occurred_at
+        description: 事件时间。
+        tests:
+          - not_null
+      - name: fetched_at
+        description: 数据抓取时间。
+      - name: connector_version
+        description: 连接器版本。
+      - name: api_method
+        description: 调用 Garmin SDK 的方法名。
+      - name: data_json
+        description: Garmin 原始 data 对象。
+      - name: payload_json
+        description: 完整请求 payload。
+      - name: ingested_at
+        description: Raw 入库时间。
+
+  - name: int_canonical__health_metric_daily
+    description: 健康指标标准长表，按 `health_event + metric_name` 拆解数值/文本指标并附质量标记。
+    columns:
+      - name: metric_row_id
+        description: 指标行主键（基于事件、指标名、来源路径与值计算）。
+        tests:
+          - not_null
+          - unique
+      - name: health_event_id
+        description: 关联健康事件主键。
+        tests:
+          - not_null
+          - relationships:
+              to: ref('int_canonical__health_event')
+              field: health_event_id
+      - name: raw_id
+        description: 回溯 Raw 主键。
+        tests:
+          - not_null
+      - name: account_ref
+        description: 脱敏账号标识。
+      - name: metric_date
+        description: 业务日期。
+      - name: metric_type
+        description: 来源指标类型。
+      - name: metric_name
+        description: 标准化指标名（snake_case）。
+        tests:
+          - not_null
+      - name: metric_value_num
+        description: 数值型指标值。
+      - name: metric_value_text
+        description: 文本型指标值（可空）。
+      - name: metric_unit
+        description: 指标单位（bpm/minutes/kcal/% 等）。
+      - name: value_source_path
+        description: 指标值提取路径（JSON path）。
+        tests:
+          - not_null
+      - name: quality_flag
+        description: 质量标记（ok/no_data/parse_failed/not_supported）。
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['ok', 'no_data', 'parse_failed', 'not_supported']
+      - name: occurred_at
+        description: 事件时间。
+        tests:
+          - not_null
+      - name: ingested_at
+        description: 入库时间。
+        tests:
+          - not_null
+      - name: extra_json
+        description: 扩展补充信息（解析元数据等）。
+        tests:
+          - not_null
+
+  - name: int_canonical__health_activity_event
+    description: 活动事件标准明细，来自 `metric_type=activities` 的活动对象拆解并按 `account_ref + activity_id` 标准化。
+    columns:
+      - name: activity_event_id
+        description: 活动事件主键（account_ref + activity_id 的哈希）。
+        tests:
+          - not_null
+          - unique
+      - name: health_event_id
+        description: 关联健康事件主键。
+        tests:
+          - not_null
+          - relationships:
+              to: ref('int_canonical__health_event')
+              field: health_event_id
+      - name: raw_id
+        description: 回溯 Raw 主键。
+        tests:
+          - not_null
+      - name: account_ref
+        description: 脱敏账号标识。
+      - name: metric_date
+        description: 业务日期。
+      - name: activity_id
+        description: Garmin 活动唯一标识。
+        tests:
+          - not_null
+      - name: activity_type
+        description: Garmin 原始活动类型名称（沿用源数据叫法，不做人为归类映射）。
+        tests:
+          - not_null
+      - name: start_at
+        description: 活动开始时间。
+      - name: duration_seconds
+        description: 活动时长（秒）。
+      - name: distance_meters
+        description: 活动距离（米）。
+      - name: calories_kcal
+        description: 活动消耗（kcal）。
+      - name: avg_heart_rate_bpm
+        description: 平均心率（bpm）。
+      - name: max_heart_rate_bpm
+        description: 最大心率（bpm）。
+      - name: elevation_gain_meters
+        description: 总爬升（米）。
+      - name: sport_sub_type
+        description: 活动子类型（占位）。
+      - name: activity_name
+        description: 活动名称（占位）。
+      - name: device_name
+        description: 设备名称（占位）。
+      - name: is_indoor
+        description: 是否室内活动（占位）。
+      - name: moving_seconds
+        description: 移动时长（秒，占位）。
+      - name: elapsed_seconds
+        description: 总历时时长（秒，占位）。
+      - name: avg_speed_mps
+        description: 平均速度（m/s，占位）。
+      - name: max_speed_mps
+        description: 最大速度（m/s，占位）。
+      - name: avg_cadence_rpm
+        description: 平均踏频（rpm，占位）。
+      - name: max_cadence_rpm
+        description: 最大踏频（rpm，占位）。
+      - name: avg_power_watts
+        description: 平均功率（W，占位）。
+      - name: max_power_watts
+        description: 最大功率（W，占位）。
+      - name: normalized_power_watts
+        description: 标准化功率（W，占位）。
+      - name: training_effect_aerobic
+        description: 有氧训练效果（占位）。
+      - name: training_effect_anaerobic
+        description: 无氧训练效果（占位）。
+      - name: training_load
+        description: 训练负荷（占位）。
+      - name: vo2max
+        description: VO2max（占位）。
+      - name: ftp_watts
+        description: FTP 功率（W，占位）。
+      - name: steps_count
+        description: 活动步数（占位）。
+      - name: lap_count
+        description: 圈数（占位）。
+      - name: avg_temperature_c
+        description: 平均温度（摄氏，占位）。
+      - name: max_temperature_c
+        description: 最高温度（摄氏，占位）。
+      - name: route_id
+        description: 路线 ID（占位）。
+      - name: course_id
+        description: 课程 ID（占位）。
+      - name: gear_id
+        description: 装备 ID（占位）。
+      - name: source_json
+        description: 原始活动对象。
+        tests:
+          - not_null
+      - name: reserved_json
+        description: 预留扩展字段（占位补充信息）。
+        tests:
+          - not_null

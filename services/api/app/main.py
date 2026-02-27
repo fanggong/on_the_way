@@ -15,7 +15,7 @@ from app.db.init_db import init_database
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title=settings.app_name, version="0.3.0")
+app = FastAPI(title=settings.app_name, version="0.3.1")
 app.include_router(router)
 
 

@@ -5,8 +5,40 @@ sources:
     schema: raw
     tables:
       - name: raw_event
+        description: 原始事实事件表，保存连接器/API 入库的不可变 payload 快照。
+        columns:
+          - name: raw_id
+            description: Raw 主键。
+          - name: source_id
+            description: 数据来源标识。
+          - name: external_id
+            description: 来源侧幂等外部键。
+          - name: occurred_at
+            description: 业务事件时间。
+          - name: payload_json
+            description: 原始 payload JSON。
+          - name: payload_hash
+            description: payload 哈希值。
+          - name: request_id
+            description: 请求审计 ID。
+          - name: ingested_at
+            description: 入库时间。
 
   - name: annotation
     schema: annotation
     tables:
       - name: annotation
+        description: 人工标注记录表，用于补充健康事件语义标签。
+        columns:
+          - name: annotation_id
+            description: 标注主键。
+          - name: target_type
+            description: 标注目标类型（health_event/health_activity_event）。
+          - name: target_id
+            description: 标注目标 ID。
+          - name: label
+            description: 标注标签名。
+          - name: value
+            description: 标注标签值。
+          - name: created_at
+            description: 标注创建时间。

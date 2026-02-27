@@ -336,3 +336,230 @@
 |------|----------|--------|--------|
 | `python -m compileall services/api services/connector-worker` | 改动后 Python 可编译 | passed | PASS |
 | `docker compose -f infra/docker/docker-compose.yml config` | compose 配置合法 | `OK` | PASS |
+
+## Session: 2026-02-26 (v0.3.1 Product Documentation Drafting)
+
+### Current Status
+- **Phase:** 2 - v0.3.1 scope definition
+- **Scope:** 产出健康系统 `raw -> canonical -> mart` 与注释治理的产品文档
+
+### Actions Taken
+- 已完成输入基线梳理：
+  - `docs/product/product_v0.3.0.md`
+  - `docs/api/api_v0.3.0.md`
+  - `docs/run/交付物启动与验收说明_v0.3.0.md`
+  - `docs/frame/frame_v1.0.md`
+- 已完成现状代码盘点：
+  - `services/api/app/db/init_db.py`
+  - `data/dbt/models/*`
+  - `infra/docker/openmetadata/ingestion/*.yml`
+  - `scripts/dev/run_openmetadata_ingestion.sh`
+- 已识别 v0.3.1 关键缺口：
+  - health 仅到 Raw，尚无 canonical/domain/mart health 模型
+  - dbt 模型缺 description，OpenMetadata 字段语义不可读
+  - Postgres ingestion 白名单未纳入 health 相关 schema
+  - 数据库表字段未落 COMMENT，非 dbt 表注释不可见
+
+### Next
+- 输出 `docs/product/product_v0.3.1.md`：
+  - 明确 ETL 目标模型、开发拆分、DoD、验收 SQL
+  - 明确 OpenMetadata 注释可见性的实施标准与验收口径
+  - 补充 Mart 结构待确认问题并给默认方案
+
+### Completion
+- 已完成 `docs/product/product_v0.3.1.md` 产出，内容包含：
+  - v0.3.1 版本范围、边界、当前进度
+  - health `raw -> canonical -> mart_health` 目标模型与字段口径
+  - dbt 模型目录、配置改造与测试清单
+  - 注释治理（dbt description + DB COMMENT）与 OpenMetadata ingestion 要求
+  - 可执行验收 SQL 与 DoD
+  - Mart 结构待确认问题及默认执行假设
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| 文档结构自检（章节/范围/路径） | 覆盖用户要求的 ETL + 注释治理 | 已覆盖且路径正确 | PASS |
+| 代码/运行命令执行 | 本次任务仅文档输出，不改代码 | 未执行 | N/A |
+
+## Session: 2026-02-27 (v0.3.1 Full Implementation)
+
+### Current Status
+- **Phase:** 2 - Data layer implementation
+- **Scope:** 按 `docs/product/product_v0.3.1.md` 完成代码落地（ETL + POC退役 + 注释治理）
+
+### Actions Taken
+- 启用 `planning-with-files` 流程并完成会话恢复检查。
+- 完成全仓盘点（API/dbt/iOS/OpenMetadata/init SQL/脚本/文档）。
+- 对齐 v0.3.1 与现状差距，锁定实施计划与默认假设：
+  - annotation 保留但切换到 health 目标对象
+  - POC 代码与数据对象执行强退役
+- 已重写 `task_plan.md` 为本轮实施计划（5个阶段）。
+- 已补充 `findings.md` 本轮 gap 与关键决策记录。
+
+### Next
+- 实施 dbt health 模型 + 删除 POC dbt 模型与测试。
+- 实施 API/DB/iOS 退役改造。
+- 更新 OpenMetadata ingestion 与 v0.3.1 文档。
+
+### Completion
+- 已完成 v0.3.1 代码落地：
+  - 数据层：health canonical + mart_health 全链路。
+  - API 层：POC 路由退役，annotation 目标切换到 health。
+  - DB 层：POC schema/data 清理 + COMMENT 治理。
+  - iOS 层：移除 POC 调试能力。
+  - 元数据层：OpenMetadata schema 白名单调整并重跑 ingestion。
+  - 文档层：新增 `api_v0.3.1`、`run_v0.3.1`，更新 `README`、模块 README、`product_v0.3.1` 状态。
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `python3 -m compileall -q services/api/app services/connector-worker/connector` | Python 代码可编译 | passed | PASS |
+| `bash -n scripts/dev/verify_v0_3_1.sh` | 验收脚本语法正确 | passed | PASS |
+| `cd apps/ios && npx tsc --noEmit` | iOS TS 类型检查通过 | passed | PASS |
+| `cd apps/ios && npm run lint` | iOS lint 通过 | passed | PASS |
+| `cd apps/ios && npm test -- --watch=false` | iOS Jest 通过 | passed | PASS |
+| `docker compose ... run --rm dbt-runner dbt parse --target dev` | dbt 配置可解析 | passed | PASS |
+| `docker compose ... run --rm dbt-runner dbt build --target dev` | 新模型与测试通过 | `PASS=69` | PASS |
+| `bash scripts/dev/run_openmetadata_ingestion.sh` | 元数据与血缘摄取成功 | completed | PASS |
+| `bash scripts/dev/verify_v0_3_1.sh` | v0.3.1 全量验收通过 | passed | PASS |
+| `POST /v1/annotation`（`health_event` / `health_activity_event`） | annotation 新目标类型可写入 | 两种 target_type 均 `200` | PASS |
+
+### Errors & Resolution
+| Error | Resolution |
+|-------|------------|
+| API 启动时报 `cannot alter type of a column used by a view or rule` | 先 `drop schema domain_poc_signal/mart_poc_signal`，再执行 `annotation.target_id` 列类型调整。 |
+| 初次执行 `verify_v0_3_1.sh` 在沙箱内无法访问 Docker socket | 提权执行并在重建 API + 重跑 OpenMetadata ingestion 后复测通过。 |
+
+## Session: 2026-02-27 (v0.3.1 Docs Rebaseline)
+
+### Current Status
+- **Phase:** Completed
+- **Trigger:** `docs/product/product_v0.3.1.md` scope changed significantly
+- **Outcome:** Re-implemented v0.3.1 to match new four-layer architecture
+
+### Actions Taken
+- Reworked dbt model topology:
+  - removed `canonical_to_mart_health`
+  - added `canonical_to_domain_health` and `domain_health_to_mart`
+  - updated tests to target `mart__*` models
+- Added new Domain fact models:
+  - `fct_domain_health__health_metric_daily_fact`
+  - `fct_domain_health__health_activity_event_fact`
+- Re-targeted Mart models to unified `mart` schema:
+  - `mart__health_metric_daily_summary`
+  - `mart__health_daily_overview`
+  - `mart__health_activity_topic_daily`
+- Updated infra/governance:
+  - `dbt_project.yml` schema mappings
+  - `init_db.py` schema migration (`mart_health` retirement, `mart` + `domain_health` comments)
+  - OpenMetadata Postgres ingestion schema whitelist
+- Updated v0.3.1 run/API/README docs to new naming and acceptance SQL.
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `docker compose ... dbt build --target dev` | New models compile and tests pass | PASS=87, ERROR=0 | PASS |
+| `bash scripts/dev/run_openmetadata_ingestion.sh` | New `mart`/`domain_health` metadata ingested | Completed successfully | PASS |
+| `bash scripts/dev/verify_v0_3_1.sh` | Full v0.3.1 acceptance passes | `[DONE] verify_v0_3_1 passed` | PASS |
+
+### Notes
+- OpenMetadata ingestion still logs non-blocking `pg_stat_statements` warning; does not affect metadata or lineage ingestion success.
+
+### Additional Closure Updates (2026-02-27)
+- Executed DB cleanup: `drop schema if exists mart_health cascade` to enforce unified `mart` schema boundary.
+- Hardened `verify_v0_3_1.sh` OpenMetadata check:
+  - if `health_metric_daily_summary` is not yet searchable, script auto-runs ingestion refresh once and retries.
+- Re-verified full acceptance after cleanup: `[DONE] verify_v0_3_1 passed`.
+
+## Session: 2026-02-27 (Activity Type + Activity Metrics Fix)
+
+### Scope
+- Keep Garmin original `activity_type` naming (remove manual category mapping).
+- Fix missing activity metrics in mart aggregation (`duration_seconds_sum` and related fields).
+
+### Actions Taken
+- Refactored `int_canonical__health_activity_event.sql`:
+  - removed manual activity-type mapping to `cycling/running/walking/swimming/other`
+  - `activity_type` now directly uses Garmin raw type naming
+  - replaced regex-based numeric parsing with `pg_input_is_valid(..., 'numeric')`
+  - added `activityTrainingLoad` parsing for `training_load`
+- Refactored downstream models:
+  - `fct_domain_health__health_activity_event_fact`: removed fixed enum validity constraint
+  - `mart__health_activity_topic_daily`: removed fixed enum filter; added non-null-safe sums for key metrics
+- Updated tests/docs:
+  - removed `activity_type` accepted-values constraints in canonical/domain/mart schema yml
+  - added not-null tests for mart key aggregates (`duration_seconds_sum`, `distance_meters_sum`, `calories_kcal_sum`)
+  - updated product/run docs to describe raw Garmin activity types
+
+### Validation
+| Check | Result |
+|------|--------|
+| `dbt build --target dev` | PASS=87, ERROR=0 |
+| `dbt build --select int_canonical__health_activity_event+` | PASS=30, ERROR=0 |
+| `bash scripts/dev/verify_v0_3_1.sh` | `[DONE] verify_v0_3_1 passed` |
+
+### Data Profiling After Fix
+- `canonical.health_activity_event`:
+  - `duration_seconds/distance_meters/calories_kcal/avg_heart_rate_bpm/max_heart_rate_bpm/training_load`: null=0
+  - `elevation_gain_meters`: null=49 (source-level absence)
+- `mart.health_activity_topic_daily`:
+  - `duration_seconds_sum/distance_meters_sum/calories_kcal_sum/training_load_sum`: null=0
+  - `avg_power_watts_avg/max_power_watts_max`: null=82 (source has no corresponding keys)
+
+### Note
+- Raw activity types currently observed: `indoor_cycling`, `road_biking`.
+
+## Session: 2026-02-27 (OpenMetadata POC Legacy Metadata Cleanup)
+
+### Scope
+- 用户反馈 OpenMetadata 仍存在 POC 相关元数据残留，需要排查根因并彻底清理。
+
+### Actions Taken
+- 通过 OpenMetadata API 检索并确认残留对象：
+  - `domain_poc_signal.signal_event`
+  - `mart_poc_signal.signal_daily_summary`
+  - `mart_health.*`
+- 交叉验证 PostgreSQL `pg_namespace`：实际仅存在 `mart`，确认问题为元数据残留而非物理表残留。
+- 修复采集与清理流程：
+  - `postgres_ingestion.yml` 增加 `markDeletedTables/markDeletedSchemas`
+  - `run_openmetadata_ingestion.sh` 增加第 `[4/4]` 步：legacy 元数据 hard delete（含 404 幂等处理）
+  - `verify_v0_3_1.sh` 增加 OpenMetadata legacy 检查并强化 mart 可见性精确匹配
+- 重跑 ingestion 与全量验收。
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `bash scripts/dev/run_openmetadata_ingestion.sh` | ingestion + legacy cleanup succeed | `[DONE] OpenMetadata ingestion complete` | PASS |
+| `bash scripts/dev/verify_v0_3_1.sh` | includes OpenMetadata legacy cleanup assertion | `[PASS] openmetadata legacy metadata removed` | PASS |
+| OpenMetadata API strict FQN scan | no `poc_signal` / `.mart_health.` entities | `legacy_fqn_hits 0` | PASS |
+
+### Notes
+- OpenMetadata 在搜索词层面（如 `mart_health`）会返回语义相关结果；验收已改为 FQN 精确匹配，避免误判。
+
+## Session: 2026-02-27 (v0.3.1 Final Closure)
+
+### Scope
+- 用户确认已完成验证，要求执行版本收尾：
+  - 清理死代码
+  - 最后一次完善版本文档
+
+### Actions Taken
+- 死代码清理：
+  - 删除 `services/api/app/core/config.py` 未使用字段 `env`、`api_port`。
+- 文档定稿：
+  - `README.md` 状态改为 v0.3.1 已验收
+  - `docs/product/product_v0.3.1.md` 状态改为已验收，并补充 v0.3.1 验收结论
+  - `docs/api/api_v0.3.1.md` 增加验收状态
+  - `docs/run/交付物启动与验收说明_v0.3.1.md` 增加 OpenMetadata 遗留元数据检查项与收尾记录
+  - `apps/ios/README.md`、`services/api/README.md` 同步验收状态
+  - `task_plan.md` 增加 Phase 6（Version Closure）并标记完成
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `python3 -m compileall -q services/api/app services/connector-worker/connector` | Python compile passes after cleanup | passed | PASS |
+| `cd apps/ios && npx tsc --noEmit --noUnusedLocals --noUnusedParameters` | no unused TS locals/params | passed | PASS |
+| `bash scripts/dev/verify_v0_3_1.sh` | full v0.3.1 acceptance remains green | `[DONE] verify_v0_3_1 passed` | PASS |
+
+### Notes
+- 首次在沙箱内执行 `verify_v0_3_1.sh` 因 Docker socket 权限受限失败，提权重跑后通过。

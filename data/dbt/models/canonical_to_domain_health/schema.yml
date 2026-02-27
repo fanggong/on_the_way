@@ -1,0 +1,134 @@
+version: 2
+
+models:
+  - name: fct_domain_health__health_metric_daily_fact
+    description: 健康指标领域事实表，粒度为 `account_ref + metric_date + metric_name`，用于承接 Canonical 指标并提供 Mart 汇总唯一输入。
+    columns:
+      - name: domain_metric_row_id
+        description: 领域指标事实主键（account_ref + metric_date + metric_name 哈希）。
+        tests:
+          - not_null
+          - unique
+      - name: account_ref
+        description: 脱敏账号标识。
+        tests:
+          - not_null
+      - name: metric_date
+        description: 业务日期。
+      - name: metric_type
+        description: 来源指标类型。
+      - name: metric_name
+        description: 领域标准指标名。
+        tests:
+          - not_null
+      - name: metric_value_num
+        description: 数值型指标值（按领域口径聚合后的日级值）。
+      - name: metric_value_text
+        description: 文本型指标值（可空）。
+      - name: metric_unit
+        description: 指标单位。
+      - name: quality_flag
+        description: 质量标记（ok/no_data/not_supported/parse_failed）。
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['ok', 'no_data', 'not_supported', 'parse_failed']
+      - name: is_valid
+        description: 领域有效性判定（quality_flag=ok 且数值可解析）。
+        tests:
+          - not_null
+      - name: source_count
+        description: 来源样本数。
+        tests:
+          - not_null
+      - name: first_occurred_at
+        description: 首次事件时间。
+      - name: last_occurred_at
+        description: 最新事件时间。
+      - name: latest_ingested_at
+        description: 最新入库时间。
+
+  - name: fct_domain_health__health_activity_event_fact
+    description: 健康活动领域事实表，粒度为 `account_ref + activity_id`，作为活动主题 Mart 的唯一事实输入。
+    columns:
+      - name: domain_activity_row_id
+        description: 领域活动主键（account_ref + activity_id 哈希）。
+        tests:
+          - not_null
+          - unique
+      - name: account_ref
+        description: 脱敏账号标识。
+        tests:
+          - not_null
+      - name: activity_id
+        description: 活动唯一标识。
+        tests:
+          - not_null
+      - name: activity_type
+        description: Garmin 原始活动类型名称（沿用源数据叫法，不做人为归类映射）。
+        tests:
+          - not_null
+      - name: activity_sub_type
+        description: 活动子类型。
+      - name: activity_date
+        description: 活动日期（按 Asia/Shanghai 口径）。
+      - name: start_at
+        description: 活动开始时间。
+      - name: duration_seconds
+        description: 活动时长（秒）。
+      - name: distance_meters
+        description: 距离（米）。
+      - name: calories_kcal
+        description: 消耗（kcal）。
+      - name: avg_heart_rate_bpm
+        description: 平均心率（bpm）。
+      - name: max_heart_rate_bpm
+        description: 最大心率（bpm）。
+      - name: elevation_gain_meters
+        description: 爬升（米）。
+      - name: moving_seconds
+        description: 移动时长（秒，占位）。
+      - name: elapsed_seconds
+        description: 总历时时长（秒，占位）。
+      - name: avg_speed_mps
+        description: 平均速度（m/s，占位）。
+      - name: max_speed_mps
+        description: 最大速度（m/s，占位）。
+      - name: avg_cadence_rpm
+        description: 平均踏频（rpm，占位）。
+      - name: max_cadence_rpm
+        description: 最大踏频（rpm，占位）。
+      - name: avg_power_watts
+        description: 平均功率（W，占位）。
+      - name: max_power_watts
+        description: 最大功率（W，占位）。
+      - name: normalized_power_watts
+        description: 标准化功率（W，占位）。
+      - name: training_effect_aerobic
+        description: 有氧训练效果（占位）。
+      - name: training_effect_anaerobic
+        description: 无氧训练效果（占位）。
+      - name: training_load
+        description: 训练负荷（占位）。
+      - name: steps_count
+        description: 活动步数（占位）。
+      - name: lap_count
+        description: 圈数（占位）。
+      - name: avg_temperature_c
+        description: 平均温度（摄氏，占位）。
+      - name: max_temperature_c
+        description: 最高温度（摄氏，占位）。
+      - name: route_id
+        description: 路线 ID（占位）。
+      - name: course_id
+        description: 课程 ID（占位）。
+      - name: gear_id
+        description: 装备 ID（占位）。
+      - name: source_json
+        description: Canonical 来源活动对象 JSON。
+        tests:
+          - not_null
+      - name: is_valid
+        description: 领域有效性判定。
+        tests:
+          - not_null

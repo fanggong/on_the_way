@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from hashlib import sha256
+import re
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
@@ -10,6 +12,7 @@ from app.core.config import settings
 
 HEALTH_ALLOWED_TIMEZONE = "Asia/Shanghai"
 _SHANGHAI_TZ = ZoneInfo(HEALTH_ALLOWED_TIMEZONE)
+_ACCOUNT_REF_PATTERN = re.compile(r"^[0-9a-f]{12}$")
 HEALTH_ALLOWED_METRIC_TYPES = {
     "user_summary",
     "sleep",
@@ -70,41 +73,6 @@ def _validate_shanghai_offset(value: datetime, *, field_name: str) -> datetime:
     return value
 
 
-class ManualSignalPayload(BaseModel):
-    value: float = Field(ge=0, le=100)
-    note: str | None = Field(default=None, max_length=256)
-
-
-class ConnectorSignalPayload(BaseModel):
-    value: float = Field(ge=0, le=100)
-    seed: str = Field(min_length=1, max_length=64)
-    generator_version: str = Field(min_length=1, max_length=32)
-
-
-class ManualSignalIngestRequest(BaseModel):
-    source_id: Literal["ios_manual"]
-    external_id: str = Field(min_length=1, max_length=64)
-    occurred_at: datetime
-    payload: ManualSignalPayload
-
-    @field_validator("occurred_at")
-    @classmethod
-    def validate_occurred_at(cls, value: datetime) -> datetime:
-        return _validate_occurred_at(value)
-
-
-class ConnectorSignalIngestRequest(BaseModel):
-    source_id: Literal["signal_random_connector"]
-    external_id: str = Field(min_length=1, max_length=64)
-    occurred_at: datetime
-    payload: ConnectorSignalPayload
-
-    @field_validator("occurred_at")
-    @classmethod
-    def validate_occurred_at(cls, value: datetime) -> datetime:
-        return _validate_occurred_at(value)
-
-
 class HealthConnectorPayload(BaseModel):
     connector: Literal["garmin_connect"]
     connector_version: str = Field(min_length=1, max_length=32)
@@ -122,6 +90,22 @@ class HealthConnectorPayload(BaseModel):
         if value not in HEALTH_ALLOWED_METRIC_TYPES:
             raise ValueError("unsupported metric_type")
         return value
+
+    @field_validator("account_ref")
+    @classmethod
+    def validate_account_ref(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if not _ACCOUNT_REF_PATTERN.fullmatch(normalized):
+            raise ValueError("account_ref must be a 12-char lowercase hex string")
+
+        if settings.garmin_email:
+            expected_ref = sha256(
+                settings.garmin_email.strip().lower().encode("utf-8")
+            ).hexdigest()[:12]
+            if normalized != expected_ref:
+                raise ValueError("account_ref does not match configured GARMIN_EMAIL")
+
+        return normalized
 
     @field_validator("fetched_at")
     @classmethod

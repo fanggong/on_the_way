@@ -7,10 +7,10 @@ from pydantic import BaseModel, Field
 
 
 class AnnotationCreateRequest(BaseModel):
-    target_type: Literal["signal_event"]
-    target_id: str
+    target_type: Literal["health_event", "health_activity_event"]
+    target_id: str = Field(min_length=1, max_length=128)
     label: str = Field(min_length=1, max_length=64)
-    value: str = Field(min_length=1, max_length=128)
+    value: str = Field(min_length=1, max_length=256)
 
 
 class AnnotationCreateResponse(BaseModel):

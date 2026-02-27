@@ -13,14 +13,17 @@ source:
         includes:
           - raw
           - canonical
-          - domain_poc_signal
-          - mart_poc_signal
+          - domain_health
+          - mart
           - annotation
+          - app
   sourceConfig:
     config:
       type: DatabaseMetadata
       includeTables: true
       includeViews: true
+      markDeletedTables: true
+      markDeletedSchemas: true
 
 sink:
   type: metadata-rest

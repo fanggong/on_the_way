@@ -1,0 +1,160 @@
+version: 2
+
+models:
+  - name: mart__health_metric_daily_summary
+    description: 健康指标日级长表汇总，粒度为 `account_ref + stat_date + metric_name`。
+    columns:
+      - name: account_ref
+        description: 脱敏账号标识。
+        tests:
+          - not_null
+      - name: stat_date
+        description: 统计日期（日级）。
+        tests:
+          - not_null
+      - name: metric_name
+        description: 标准指标名。
+        tests:
+          - not_null
+      - name: sample_count
+        description: 指标样本条数。
+        tests:
+          - not_null
+      - name: value_avg
+        description: 指标平均值。
+      - name: value_min
+        description: 指标最小值。
+      - name: value_max
+        description: 指标最大值。
+      - name: latest_occurred_at
+        description: 当日该指标最新业务时间。
+      - name: latest_ingested_at
+        description: 当日该指标最新入库时间。
+      - name: quality_ok_count
+        description: 质量正常条数（quality_flag=ok）。
+        tests:
+          - not_null
+      - name: quality_issue_count
+        description: 质量异常条数（quality_flag!=ok）。
+        tests:
+          - not_null
+
+  - name: mart__health_daily_overview
+    description: 健康日级总览宽表，粒度为 `account_ref + stat_date`，用于消费层快速读取核心健康概览。
+    columns:
+      - name: account_ref
+        description: 脱敏账号标识。
+        tests:
+          - not_null
+      - name: stat_date
+        description: 统计日期（日级）。
+        tests:
+          - not_null
+      - name: sleep_duration_min
+        description: 当日睡眠时长（分钟）。
+      - name: resting_hr_bpm
+        description: 当日静息心率（bpm）。
+      - name: stress_level_avg
+        description: 当日压力平均值。
+      - name: body_battery_avg
+        description: 当日身体电量平均值。
+      - name: steps_count
+        description: 当日步数。
+      - name: active_kcal
+        description: 当日活动消耗（kcal）。
+      - name: coverage_metric_count
+        description: 当日有有效值覆盖的指标数量。
+        tests:
+          - not_null
+      - name: quality_issue_count
+        description: 当日质量问题条数总和。
+        tests:
+          - not_null
+      - name: updated_at
+        description: Mart 刷新时间。
+        tests:
+          - not_null
+
+  - name: mart__health_activity_topic_daily
+    description: 活动主题日级聚合表，粒度为 `account_ref + stat_date + activity_type`，支持骑行等活动结构分析。
+    columns:
+      - name: account_ref
+        description: 脱敏账号标识。
+        tests:
+          - not_null
+      - name: stat_date
+        description: 统计日期（日级）。
+        tests:
+          - not_null
+      - name: activity_type
+        description: Garmin 原始活动类型名称（沿用源数据叫法，不做人为归类映射）。
+        tests:
+          - not_null
+      - name: activity_count
+        description: 活动次数。
+        tests:
+          - not_null
+      - name: duration_seconds_sum
+        description: 活动总时长（秒）。
+        tests:
+          - not_null
+      - name: distance_meters_sum
+        description: 活动总距离（米）。
+        tests:
+          - not_null
+      - name: calories_kcal_sum
+        description: 活动总消耗（kcal）。
+        tests:
+          - not_null
+      - name: moving_seconds_sum
+        description: 移动时长合计（秒，占位）。
+      - name: elapsed_seconds_sum
+        description: 历时时长合计（秒，占位）。
+      - name: avg_speed_mps_avg
+        description: 平均速度均值（m/s，占位）。
+      - name: max_speed_mps_max
+        description: 最大速度峰值（m/s，占位）。
+      - name: avg_cadence_rpm_avg
+        description: 平均踏频均值（rpm，占位）。
+      - name: max_cadence_rpm_max
+        description: 最大踏频峰值（rpm，占位）。
+      - name: avg_power_watts_avg
+        description: 平均功率均值（W，占位）。
+      - name: max_power_watts_max
+        description: 最大功率峰值（W，占位）。
+      - name: normalized_power_watts_avg
+        description: 标准化功率均值（W，占位）。
+      - name: training_effect_aerobic_avg
+        description: 有氧训练效果均值（占位）。
+      - name: training_effect_anaerobic_avg
+        description: 无氧训练效果均值（占位）。
+      - name: training_load_sum
+        description: 训练负荷合计（占位）。
+      - name: steps_count_sum
+        description: 步数合计（占位）。
+      - name: lap_count_sum
+        description: 圈数合计（占位）。
+      - name: avg_temperature_c_avg
+        description: 平均温度均值（摄氏，占位）。
+      - name: max_temperature_c_max
+        description: 最高温度峰值（摄氏，占位）。
+      - name: route_covered_count
+        description: 路线覆盖数（distinct route_id，占位）。
+        tests:
+          - not_null
+      - name: gear_used_count
+        description: 装备使用数（distinct gear_id，占位）。
+        tests:
+          - not_null
+      - name: avg_heart_rate_bpm_avg
+        description: 平均心率均值（bpm）。
+      - name: max_heart_rate_bpm_max
+        description: 最大心率峰值（bpm）。
+      - name: elevation_gain_meters_sum
+        description: 总爬升（米）。
+      - name: latest_start_at
+        description: 当日最近活动开始时间。
+      - name: updated_at
+        description: Mart 刷新时间。
+        tests:
+          - not_null

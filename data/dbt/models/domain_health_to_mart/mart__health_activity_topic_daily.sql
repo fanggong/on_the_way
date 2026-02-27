@@ -1,0 +1,35 @@
+{{ config(alias='health_activity_topic_daily') }}
+
+select
+  account_ref,
+  activity_date as stat_date,
+  activity_type,
+  count(*)::bigint as activity_count,
+  coalesce(sum(duration_seconds), 0)::numeric(18,4) as duration_seconds_sum,
+  coalesce(sum(distance_meters), 0)::numeric(18,4) as distance_meters_sum,
+  coalesce(sum(calories_kcal), 0)::numeric(18,4) as calories_kcal_sum,
+  sum(moving_seconds)::numeric(18,4) as moving_seconds_sum,
+  sum(elapsed_seconds)::numeric(18,4) as elapsed_seconds_sum,
+  round(avg(avg_speed_mps)::numeric, 4)::numeric(18,4) as avg_speed_mps_avg,
+  max(max_speed_mps)::numeric(18,4) as max_speed_mps_max,
+  round(avg(avg_cadence_rpm)::numeric, 4)::numeric(18,4) as avg_cadence_rpm_avg,
+  max(max_cadence_rpm)::numeric(18,4) as max_cadence_rpm_max,
+  round(avg(avg_power_watts)::numeric, 4)::numeric(18,4) as avg_power_watts_avg,
+  max(max_power_watts)::numeric(18,4) as max_power_watts_max,
+  round(avg(normalized_power_watts)::numeric, 4)::numeric(18,4) as normalized_power_watts_avg,
+  round(avg(training_effect_aerobic)::numeric, 4)::numeric(18,4) as training_effect_aerobic_avg,
+  round(avg(training_effect_anaerobic)::numeric, 4)::numeric(18,4) as training_effect_anaerobic_avg,
+  sum(training_load)::numeric(18,4) as training_load_sum,
+  sum(steps_count)::numeric(18,4) as steps_count_sum,
+  sum(lap_count)::bigint as lap_count_sum,
+  round(avg(avg_temperature_c)::numeric, 4)::numeric(18,4) as avg_temperature_c_avg,
+  max(max_temperature_c)::numeric(18,4) as max_temperature_c_max,
+  count(distinct route_id) filter (where route_id is not null and route_id <> '')::bigint as route_covered_count,
+  count(distinct gear_id) filter (where gear_id is not null and gear_id <> '')::bigint as gear_used_count,
+  round(avg(avg_heart_rate_bpm)::numeric, 4)::numeric(18,4) as avg_heart_rate_bpm_avg,
+  max(max_heart_rate_bpm)::numeric(18,4) as max_heart_rate_bpm_max,
+  coalesce(sum(elevation_gain_meters), 0)::numeric(18,4) as elevation_gain_meters_sum,
+  max(start_at) as latest_start_at,
+  now() as updated_at
+from {{ ref('fct_domain_health__health_activity_event_fact') }}
+group by 1, 2, 3

@@ -108,7 +108,7 @@ def load_settings() -> ConnectorSettings:
         ingest_path=os.getenv("CONNECTOR_INGEST_PATH", "/v1/ingest/connector-health"),
         interval_seconds=_positive_int_env("CONNECTOR_INTERVAL_SECONDS", "3600"),
         source_id="garmin_connect_health",
-        connector_version=os.getenv("CONNECTOR_VERSION", "v0.3.0"),
+        connector_version=os.getenv("CONNECTOR_VERSION", "v0.3.1"),
         request_timeout_seconds=_positive_int_env(
             "CONNECTOR_REQUEST_TIMEOUT_SECONDS", "10"
         ),

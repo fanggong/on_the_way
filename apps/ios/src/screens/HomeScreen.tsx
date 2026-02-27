@@ -1,14 +1,10 @@
 import React, {useCallback, useMemo, useRef, useState} from 'react';
-import {Animated, Easing, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View} from 'react-native';
+import {Animated, Easing, ScrollView, StyleSheet, Text, useWindowDimensions, View} from 'react-native';
 
-import {DEFAULT_THEME_KEY, HOME_THEMES, type ThemeDefinition, type ThemeKey} from '../config/themes';
 import ThemeCard from '../components/ThemeCard';
 import ThemeNavBar from '../components/ThemeNavBar';
+import {DEFAULT_THEME_KEY, HOME_THEMES, type ThemeDefinition, type ThemeKey} from '../config/themes';
 import {tokens} from '../theme/tokens';
-
-type Props = {
-  onOpenDebug: () => void;
-};
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat('zh-CN', {
@@ -19,7 +15,7 @@ function formatDate(date: Date): string {
   }).format(date);
 }
 
-export default function HomeScreen({onOpenDebug}: Props) {
+export default function HomeScreen() {
   const {width} = useWindowDimensions();
   const [selectedKey, setSelectedKey] = useState<ThemeKey>(DEFAULT_THEME_KEY);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
@@ -73,16 +69,11 @@ export default function HomeScreen({onOpenDebug}: Props) {
       style={styles.container}
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={styles.content}>
-      <Pressable
-        onLongPress={onOpenDebug}
-        delayLongPress={900}
-        accessibilityRole="button"
-        accessibilityLabel="首页品牌区，长按进入调试入口"
-        style={({pressed}) => [styles.hero, pressed ? styles.heroPressed : null]}>
+      <View style={styles.hero}>
         <Text style={styles.brand}>On The Way</Text>
         <Text style={styles.subtitle}>今日概览</Text>
         <Text style={styles.date}>{todayText}</Text>
-      </Pressable>
+      </View>
 
       <ThemeNavBar themes={HOME_THEMES} selectedKey={selectedKey} onSelect={showComingSoon} />
 
@@ -112,7 +103,7 @@ export default function HomeScreen({onOpenDebug}: Props) {
         ))}
       </View>
 
-      <Text style={styles.footer}>v0.2.0 当前为界面设计版本，更多功能将分阶段开放。</Text>
+      <Text style={styles.footer}>v0.3.1 已移除 POC 调试入口，当前仅保留主题导航与占位交互。</Text>
     </ScrollView>
   );
 }
@@ -136,9 +127,6 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spacing.lg,
     paddingHorizontal: tokens.spacing.md,
     gap: 6,
-  },
-  heroPressed: {
-    opacity: 0.92,
   },
   brand: {
     fontSize: tokens.typography.h1,

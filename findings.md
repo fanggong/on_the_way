@@ -260,3 +260,222 @@
   - `docs/product/product_v0.3.0.md` 状态改为“已验收”，并补充一次性全量回填操作说明。
   - `docs/api/api_v0.3.0.md` 与 `docs/product/product_v0.3.0.md` 的时间样例统一为 `Asia/Shanghai` 偏移格式（`+08:00`），移除“转 UTC”表述。
   - `docs/run/交付物启动与验收说明_v0.3.0.md` 补充 `GARMIN_IS_CN`，新增历史全量回填操作步骤与回填标记说明。
+
+## v0.3.1 Discovery Findings (2026-02-26)
+
+- 版本现状：
+  - `v0.3.0` 已验收，健康系统仅完成 Raw 入库（`garmin_connect_health -> raw.raw_event`）。
+  - `v0.3.1` 目标是补齐健康链路到 `canonical` 与 `mart`，并完善注释治理。
+- 数据模型现状：
+  - `data/dbt` 仅存在 `poc_signal` 领域链路（`raw_to_canonical -> domain_poc_signal -> mart_poc_signal`）。
+  - `canonical.event` 当前固定 `event_type='signal_event'`，尚未区分健康事件类型。
+  - 数据库已预留 `domain_health` schema，但暂无 dbt 模型落地。
+- 元数据治理现状：
+  - `dbt_ingestion.yml` 已开启 `dbtUpdateDescriptions: true`，可同步 dbt 描述到 OpenMetadata。
+  - 当前模型 `schema.yml` 基本无 description，导致 OpenMetadata 字段语义不完整。
+  - `postgres_ingestion.yml` schema 白名单仅含 `raw/canonical/domain_poc_signal/mart_poc_signal/annotation`，尚未覆盖 `domain_health` 和未来 `mart_health`。
+- 注释落地现状：
+  - `services/api/app/db/init_db.py` 中表和字段未设置 `COMMENT ON`，数据库原生元数据描述缺失。
+  - 若只做 dbt description，不会覆盖 Raw/App/Annotation 这类非 dbt 管理表的注释需求。
+- v0.3.1 文档编写约束：
+  - 必须同时定义“dbt description + PostgreSQL COMMENT + OpenMetadata ingestion 范围更新”的组合方案，才能满足“所有表和字段在 OpenMetadata 可查看注释”。
+  - Mart 层结构仍存在产品决策空间，文档需附带待确认问题并给默认假设，避免阻塞数据开发启动。
+
+## v0.3.1 Product Doc Decisions (2026-02-26)
+
+- 已输出 `docs/product/product_v0.3.1.md`，并给出可开工默认方案：
+  - Canonical：`health_event` + `health_metric_daily`（长表标准化）
+  - Mart：`metric_daily_summary`（长表汇总）+ `daily_overview`（宽表总览）
+- 注释治理采用“双轨并行”：
+  - dbt 模型通过 `schema.yml description` + `persist_docs` 落注释
+  - 非 dbt 表通过 `COMMENT ON TABLE/COLUMN` 落注释
+- OpenMetadata 可见性依赖以下同时满足：
+  - Postgres ingestion schema 白名单覆盖 `app`、`mart_health`（及保留的 `domain_health`）
+  - dbt ingestion 保持 `dbtUpdateDescriptions: true`
+- Mart 未决策项已在文档中显式列出，并设置默认执行假设，避免阻塞研发启动。
+
+## v0.3.1 Implementation Gap Findings (2026-02-27)
+
+- API 仍存在完整 POC 能力：
+  - `POST /v1/ingest/manual-signal`
+  - `POST /v1/ingest/connector-signal`
+  - `GET /v1/poc/signals`
+  - `GET /v1/poc/daily-summary`
+- annotation 仍强绑定 `signal_event`：
+  - `services/api/app/schemas/annotation.py` 仅允许 `target_type=signal_event`
+  - `annotation_service` 仅校验 `domain_poc_signal.signal_event`
+- dbt 仍是 v0.1.0 POC 链路：
+  - 仅有 `raw_to_canonical -> canonical_to_domain_poc_signal -> domain_poc_signal_to_mart`
+  - 不存在 `health_event/health_metric_daily/health_activity_event` 与 `mart_health` 模型
+  - `dbt_project.yml` 未启用 `persist_docs`
+- iOS 仍含 POC 调试能力：
+  - 首页长按进入 debug
+  - `ManualInputScreen` + `DailySummaryScreen`
+  - `src/api/client.ts` 仍调用 `manual-signal` 与 `poc/daily-summary`
+- OpenMetadata ingestion 仍采集 POC schema：
+  - `postgres_ingestion.yml` 包含 `domain_poc_signal/mart_poc_signal`
+  - 未包含 `mart_health` 与 `app`
+- DB 初始化脚本仍创建 POC schema 且缺少 COMMENT：
+  - `init_db.py` 仍创建 `domain_poc_signal` / `mart_poc_signal`
+  - `raw/annotation/app` 表字段未落 `COMMENT ON`
+
+## v0.3.1 Implementation Decisions (2026-02-27)
+
+- 默认保留 annotation 能力，但从 `signal_event` 切换到健康对象：
+  - `health_event`
+  - `health_activity_event`
+- POC 退役将通过“代码删除 + 启动时幂等清理 SQL”同时落地：
+  - 删除 API/dbt/iOS POC 代码
+  - 在 init SQL 中执行 POC 历史数据删除与 schema drop
+- health Canonical 采用两层策略：
+  - `health_event` 保留 1:1 Raw 追溯
+  - `health_metric_daily` 通过 JSON 拆解产出标准化明细并补质量标记
+- 活动主题采用实体明细 + 日聚合：
+  - `canonical.health_activity_event`
+  - `mart_health.activity_topic_daily`
+
+## v0.3.1 Implementation Findings (2026-02-27)
+
+- dbt 已完成 v0.3.1 健康链路替换：
+  - 新增 `canonical`：
+    - `stg_raw__health_event`
+    - `health_event`
+    - `health_metric_daily`
+    - `health_activity_event`
+  - 新增 `mart_health`：
+    - `metric_daily_summary`
+    - `daily_overview`
+    - `activity_topic_daily`
+  - 删除 POC 模型与测试（`domain_poc_signal` / `mart_poc_signal`）。
+- API 已完成 POC 退役与健康化：
+  - 删除 `manual-signal` / `connector-signal` / `/v1/poc/*` 路由。
+  - 保留 `connector-health`、`annotation`、health endpoints。
+  - annotation 目标切换为 `health_event` / `health_activity_event`。
+- DB 初始化脚本已完成：
+  - POC schema drop（`domain_poc_signal` / `mart_poc_signal`）。
+  - POC 历史数据清理（raw/audit/annotation）。
+  - `raw/annotation/app` 表字段 COMMENT 补齐。
+- iOS 已完成 POC 调试退役：
+  - 删除调试入口、手工录入页、结果查询页及相关客户端 API/types/utils。
+  - 首页保持 v0.2.0 主题入口能力。
+- OpenMetadata 已更新采集白名单：
+  - 保留 `raw/canonical/annotation/app`
+  - 新增 `mart_health`
+  - 移除 `domain_poc_signal/mart_poc_signal`
+
+## v0.3.1 Verification Findings (2026-02-27)
+
+- 静态检查：
+  - `python3 -m compileall -q services/api/app services/connector-worker/connector` 通过。
+  - `bash -n scripts/dev/verify_v0_3_1.sh` 通过。
+  - `apps/ios`：`npx tsc --noEmit`、`npm run lint`、`npm test -- --watch=false` 通过。
+- dbt 验证：
+  - `docker compose ... run --rm dbt-runner dbt parse --target dev` 通过。
+  - `docker compose ... run --rm dbt-runner dbt build --target dev` 通过（`PASS=69`）。
+- 端到端验收：
+  - `bash scripts/dev/run_openmetadata_ingestion.sh` 通过。
+  - `bash scripts/dev/verify_v0_3_1.sh` 通过（含 POC 退役接口 404 校验、POC schema/data 清理校验、OpenMetadata `metric_daily_summary` 可见性校验）。
+
+## v0.3.1 Bugfix Notes (2026-02-27)
+
+- 发现并修复一次启动失败：
+  - 现象：API 启动时 `alter table annotation.annotation alter column target_id type text` 报错，提示被 `domain_poc_signal.signal_event` 视图依赖。
+  - 根因：在 drop POC schema 之前执行了 `alter column`。
+  - 修复：将 `drop schema if exists mart_poc_signal/domain_poc_signal` 提前到 `alter column` 之前执行。
+
+## v0.3.1 Rebaseline Findings (2026-02-27)
+
+- 产品文档已从 `raw -> canonical -> mart_health` 调整为强制四层：`raw -> canonical -> domain_health -> mart`。
+- 旧实现中的 `canonical_to_mart_health` 目录与 `mart_health.*` 目标表不再满足新版要求。
+- 已完成重构：
+  - dbt 目录改为 `canonical_to_domain_health` 与 `domain_health_to_mart`
+  - 新增 `domain_health.health_metric_daily_fact` / `domain_health.health_activity_event_fact`
+  - Mart 统一为 `mart.health_metric_daily_summary` / `mart.health_daily_overview` / `mart.health_activity_topic_daily`
+- OpenMetadata Postgres ingestion 白名单已切换为：`raw/canonical/domain_health/mart/annotation/app`。
+- `verify_v0_3_1.sh` 已更新并通过，覆盖 Domain 与 Mart 新对象。
+- 为避免旧对象残留干扰，数据库初始化加入 `drop schema if exists mart_health cascade` 作为迁移清理步骤。
+
+## Activity Parsing Bug Fix (2026-02-27)
+
+- 用户反馈确认两点：
+  1. `activity_type` 不应做人为归类，需沿用 Garmin 原始命名。
+  2. `mart` 活动聚合出现缺失（`duration_seconds_sum` 等应有值字段为空）。
+
+### Root Cause
+- `int_canonical__health_activity_event.sql` 中数值提取大量依赖正则匹配；在 dbt 实际落表执行上下文下，关键字段（`duration/distance/calories/averageHR/maxHR`）被批量解析为 `null`。
+- 下游 Domain/Mart 继承了这些空值，导致 `mart.health_activity_topic_daily` 中关键聚合字段缺失。
+- `training_load` 还存在字段名偏差：Garmin 原始字段为 `activityTrainingLoad`，而模型只解析了 `trainingLoad`。
+
+### Fix
+- Canonical 活动模型改为使用 `pg_input_is_valid(..., 'numeric')` 做数值可解析判断，替代原正则判断。
+- `activity_type` 改为直接使用 Garmin 原始类型值（如 `road_biking`、`indoor_cycling`），移除人为映射逻辑。
+- `training_load` 增加对 `activityTrainingLoad` 的解析。
+- Mart 活动聚合：
+  - 移除对固定活动类型枚举的过滤。
+  - 对 `duration_seconds_sum/distance_meters_sum/calories_kcal_sum/elevation_gain_meters_sum` 增加 `coalesce(sum(...),0)`。
+- 模型测试与文档同步：去除 `activity_type` 固定枚举约束，更新 run/product 文档口径。
+
+### Data Quality Verification
+- Canonical `health_activity_event`（98行）关键字段空值：
+  - `duration_seconds/distance_meters/calories_kcal/avg_heart_rate_bpm/max_heart_rate_bpm/training_load` 均为 `0` 空值。
+  - `elevation_gain_meters` 空值 `49`（对应部分活动源数据缺失该字段）。
+- Mart `health_activity_topic_daily`（82行）关键聚合字段空值：
+  - `duration_seconds_sum/distance_meters_sum/calories_kcal_sum/avg_heart_rate_bpm_avg/max_heart_rate_bpm_max/training_load_sum` 均为 `0` 空值。
+  - `avg_power_watts_avg/max_power_watts_max` 仍为空（源数据无 `averagePower/maxPower` 字段）。
+  - `max_speed_mps_max` 部分为空（源数据仅 48/98 条包含 `maxSpeed`）。
+
+## OpenMetadata Legacy Metadata Cleanup (2026-02-27)
+
+### Symptom
+- OpenMetadata 中仍可检索到退役对象：
+  - `otw_postgres.otw_dev.domain_poc_signal.signal_event`
+  - `otw_postgres.otw_dev.mart_poc_signal.signal_daily_summary`
+  - `otw_postgres.otw_dev.mart_health.*`
+- PostgreSQL 实体层已无对应 schema（仅剩 `mart`），说明属于 OpenMetadata 历史元数据残留。
+
+### Root Cause
+- `infra/docker/openmetadata/ingestion/postgres_ingestion.yml` 未开启 `markDeletedTables/markDeletedSchemas`，导致源端已删除对象未自动标记删除。
+- OpenMetadata Search 会返回 `deleted=true` 的历史实体；仅做 soft-delete 时用户仍可能“看见”这些残留。
+
+### Fix
+- 在 Postgres ingestion 配置中启用：
+  - `markDeletedTables: true`
+  - `markDeletedSchemas: true`
+- 增强 `scripts/dev/run_openmetadata_ingestion.sh`：
+  - ingestion 完成后新增 `[4/4]` 步骤，对 `domain_poc_signal`、`mart_poc_signal`、`mart_health` 相关 `table/databaseSchema` 执行 OpenMetadata API `hardDelete=true&recursive=true`。
+  - 清理逻辑做了幂等处理：删除遇到 404 视为“已删除”，不会导致脚本失败。
+- 增强 `scripts/dev/verify_v0_3_1.sh`：
+  - OpenMetadata 可见性校验改为精确匹配 `otw_postgres.otw_dev.mart.health_metric_daily_summary`。
+  - 新增 `openmetadata legacy metadata removed` 校验，强制检查上述遗留关键字不再出现在实体 FQN。
+
+### Validation
+- `bash scripts/dev/run_openmetadata_ingestion.sh`：通过。
+- `bash scripts/dev/verify_v0_3_1.sh`：通过，新增检查项显示 `[PASS] openmetadata legacy metadata removed`。
+- OpenMetadata API 复核：
+  - `q=domain_poc_signal` -> `hits 0`
+  - `q=mart_poc_signal` -> `hits 0`
+  - FQN 严格过滤（`poc_signal`/`.mart_health.`）-> `legacy_fqn_hits 0`
+
+## v0.3.1 Closure Findings (2026-02-27)
+
+### Dead Code Cleanup
+- API 配置对象中存在确认未使用字段：
+  - `Settings.env`
+  - `Settings.api_port`
+- 以上字段已从 `services/api/app/core/config.py` 删除，避免保留无调用配置路径。
+- 复核结果：
+  - `python3 -m compileall -q services/api/app services/connector-worker/connector` 通过
+  - `apps/ios` `npx tsc --noEmit --noUnusedLocals --noUnusedParameters` 通过
+
+### Documentation Finalization
+- v0.3.1 文档状态统一更新为 `已验收（已完成）`：
+  - `README.md`
+  - `docs/product/product_v0.3.1.md`
+  - `docs/api/api_v0.3.1.md`
+  - `docs/run/交付物启动与验收说明_v0.3.1.md`
+  - `apps/ios/README.md`
+  - `services/api/README.md`
+- 运行手册补充了收尾记录与 OpenMetadata 遗留元数据“无残留”验收结论。
+
+### Final Verification
+- `bash scripts/dev/verify_v0_3_1.sh` 通过（含 OpenMetadata legacy metadata removed 检查项）。
