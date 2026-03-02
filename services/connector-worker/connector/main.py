@@ -6,12 +6,12 @@ import time
 from dataclasses import dataclass
 from datetime import date, datetime, time as time_value, timedelta
 from hashlib import sha256
-from pathlib import Path
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
 import httpx
 import psycopg
+from psycopg.rows import dict_row
 
 from connector.config import DEFAULT_METRICS, settings
 
@@ -44,6 +44,23 @@ class CycleStats:
     no_data: int = 0
     not_supported: int = 0
     errors: int = 0
+
+
+@dataclass(frozen=True)
+class SyncPolicyContext:
+    connector_code: str
+    auto_sync_enabled: bool
+    auto_sync_interval_minutes: int
+    config_json: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class SyncJob:
+    job_id: str
+    connector_code: str
+    job_type: str
+    backfill_start_at: datetime | None
+    backfill_end_at: datetime | None
 
 
 METRIC_METHODS: dict[str, tuple[MetricMethod, ...]] = {
@@ -176,20 +193,6 @@ def _build_account_ref(email: str) -> str:
     return sha256(email.strip().lower().encode("utf-8")).hexdigest()[:12]
 
 
-def _backfill_marker_path() -> Path:
-    return Path(settings.garmin_token_dir) / ".backfill_done"
-
-
-def _is_backfill_done() -> bool:
-    return _backfill_marker_path().exists()
-
-
-def _mark_backfill_done() -> None:
-    marker = _backfill_marker_path()
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.touch(exist_ok=True)
-
-
 def _resolve_metric_list() -> tuple[str, ...]:
     allowed = set(DEFAULT_METRICS)
     valid = tuple(metric for metric in settings.garmin_metrics if metric in allowed)
@@ -205,11 +208,8 @@ def _resolve_metric_list() -> tuple[str, ...]:
     return tuple(DEFAULT_METRICS)
 
 
-def _resolve_metric_dates(now_local_date: date, *, backfill: bool) -> list[date]:
-    days = settings.garmin_fetch_window_days
-    if backfill:
-        days = max(days, settings.garmin_backfill_days)
-
+def _resolve_metric_dates(now_local_date: date, *, days: int) -> list[date]:
+    days = max(days, 1)
     start_date = now_local_date - timedelta(days=days - 1)
     return [start_date + timedelta(days=index) for index in range(days)]
 
@@ -235,6 +235,7 @@ def _build_ingest_request(
     metric_type: str,
     metric_date: date,
     timezone: ZoneInfo,
+    timezone_name: str,
     account_ref: str,
     api_method: str | None,
     raw_data: Any,
@@ -246,7 +247,7 @@ def _build_ingest_request(
         "account_ref": account_ref,
         "metric_type": metric_type,
         "metric_date": metric_date.isoformat(),
-        "timezone": settings.garmin_timezone,
+        "timezone": timezone_name,
         "fetched_at": fetched_at.isoformat(),
         "api_method": api_method,
         "data": _normalize_data(raw_data),
@@ -412,11 +413,11 @@ def _try_resume_mfa(garmin_client: Any, mfa_code: str) -> bool:
     return False
 
 
-def _build_garmin_client() -> Any:
+def _build_garmin_client(*, runtime_is_cn: bool) -> Any:
     if Garmin is None:
         raise RuntimeError(f"garminconnect import failed: {GARMIN_IMPORT_ERROR}")
 
-    configured_is_cn = settings.garmin_is_cn
+    configured_is_cn = runtime_is_cn
     fallback_is_cn = not configured_is_cn
     constructors = [
         lambda: Garmin(
@@ -450,8 +451,6 @@ def _build_garmin_client() -> Any:
 
 
 def _login_garmin(garmin_client: Any) -> None:
-    Path(settings.garmin_token_dir).mkdir(parents=True, exist_ok=True)
-
     login_method = getattr(garmin_client, "login", None)
     if not callable(login_method):
         raise RuntimeError("Garmin client has no login method")
@@ -532,7 +531,15 @@ def _send_ingest(
     return False
 
 
-def _run_cycle(http_client: httpx.Client, *, timezone: ZoneInfo, metrics: tuple[str, ...]) -> CycleStats:
+def _run_cycle(
+    http_client: httpx.Client,
+    *,
+    timezone: ZoneInfo,
+    timezone_name: str,
+    runtime_is_cn: bool,
+    metrics: tuple[str, ...],
+    metric_dates: list[date],
+) -> CycleStats:
     stats = CycleStats()
 
     if not settings.garmin_email or not settings.garmin_password:
@@ -541,25 +548,14 @@ def _run_cycle(http_client: httpx.Client, *, timezone: ZoneInfo, metrics: tuple[
         return stats
 
     try:
-        garmin_client = _build_garmin_client()
+        garmin_client = _build_garmin_client(runtime_is_cn=runtime_is_cn)
         _login_garmin(garmin_client)
     except Exception as exc:
         logger.error("garmin auth failed: %s", exc)
         stats.errors += 1
         return stats
 
-    now_local_date = datetime.now(timezone).date()
-    backfill = not _is_backfill_done()
-    metric_dates = _resolve_metric_dates(now_local_date, backfill=backfill)
     account_ref = _build_account_ref(settings.garmin_email)
-
-    if backfill:
-        logger.info(
-            "backfill mode enabled days=%s date_range=%s..%s",
-            len(metric_dates),
-            metric_dates[0].isoformat(),
-            metric_dates[-1].isoformat(),
-        )
 
     for metric_type in metrics:
         target_dates = _resolve_target_dates(metric_type, metric_dates)
@@ -575,6 +571,7 @@ def _run_cycle(http_client: httpx.Client, *, timezone: ZoneInfo, metrics: tuple[
                     metric_type=metric_type,
                     metric_date=metric_date,
                     timezone=timezone,
+                    timezone_name=timezone_name,
                     account_ref=account_ref,
                     api_method=api_method,
                     raw_data=data,
@@ -617,23 +614,229 @@ def _run_cycle(http_client: httpx.Client, *, timezone: ZoneInfo, metrics: tuple[
                 err,
             )
 
-    if backfill and stats.errors == 0:
-        _mark_backfill_done()
-
     return stats
+
+
+def _connect_db() -> psycopg.Connection:
+    return psycopg.connect(
+        settings.db_url,
+        options="-c timezone=Asia/Shanghai",
+        row_factory=dict_row,
+    )
+
+
+def _load_sync_policy_context() -> SyncPolicyContext | None:
+    with _connect_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                select
+                  scs.connector_code,
+                  scs.auto_sync_enabled,
+                  scs.auto_sync_interval_minutes,
+                  sco.enabled as connector_enabled,
+                  sco.config_json
+                from app.system_core_source scs
+                left join app.system_connector_option sco
+                  on sco.system_code = scs.system_code
+                 and sco.connector_code = scs.connector_code
+                where scs.system_code = 'health'
+                """
+            )
+            row = cur.fetchone()
+
+    if not row:
+        return None
+
+    connector_code = row.get("connector_code")
+    if connector_code != "garmin_connect":
+        return None
+
+    if not row.get("connector_enabled"):
+        return None
+
+    config_json = row.get("config_json")
+    if not isinstance(config_json, dict):
+        config_json = {}
+
+    return SyncPolicyContext(
+        connector_code=connector_code,
+        auto_sync_enabled=bool(row.get("auto_sync_enabled")),
+        auto_sync_interval_minutes=max(int(row.get("auto_sync_interval_minutes") or 60), 15),
+        config_json=config_json,
+    )
+
+
+def _coerce_int(value: Any, *, default: int, minimum: int, maximum: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(min(parsed, maximum), minimum)
+
+
+def _coerce_bool(value: Any, *, default: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"1", "true", "yes", "y", "on"}:
+            return True
+        if lowered in {"0", "false", "no", "n", "off"}:
+            return False
+    return default
+
+
+def _enqueue_auto_job_if_due(policy: SyncPolicyContext) -> None:
+    if not policy.auto_sync_enabled:
+        return
+
+    with _connect_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                select exists(
+                  select 1
+                  from app.connector_sync_job
+                  where system_code = 'health'
+                    and status in ('queued', 'running')
+                ) as has_pending
+                """
+            )
+            has_pending = bool(cur.fetchone()["has_pending"])
+            if has_pending:
+                return
+
+            cur.execute(
+                """
+                select triggered_at
+                from app.connector_sync_job
+                where system_code = 'health'
+                  and job_type = 'auto_sync'
+                order by triggered_at desc
+                limit 1
+                """
+            )
+            row = cur.fetchone()
+
+            should_enqueue = False
+            if not row:
+                should_enqueue = True
+            else:
+                last_triggered_at = row["triggered_at"]
+                next_trigger_at = last_triggered_at + timedelta(
+                    minutes=policy.auto_sync_interval_minutes
+                )
+                should_enqueue = datetime.now(last_triggered_at.tzinfo) >= next_trigger_at
+
+            if should_enqueue:
+                cur.execute(
+                    """
+                    insert into app.connector_sync_job (
+                      system_code,
+                      connector_code,
+                      job_type,
+                      status,
+                      triggered_at
+                    ) values (
+                      'health',
+                      %s,
+                      'auto_sync',
+                      'queued',
+                      now()
+                    )
+                    """,
+                    (policy.connector_code,),
+                )
+                conn.commit()
+
+
+def _claim_next_job(policy: SyncPolicyContext) -> SyncJob | None:
+    with _connect_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                with picked as (
+                  select job_id
+                  from app.connector_sync_job
+                  where system_code = 'health'
+                    and connector_code = %s
+                    and status = 'queued'
+                  order by triggered_at asc
+                  for update skip locked
+                  limit 1
+                )
+                update app.connector_sync_job
+                set status = 'running',
+                    started_at = now()
+                where job_id in (select job_id from picked)
+                returning
+                  job_id::text as job_id,
+                  connector_code,
+                  job_type,
+                  backfill_start_at,
+                  backfill_end_at
+                """,
+                (policy.connector_code,),
+            )
+            row = cur.fetchone()
+
+            if not row:
+                conn.rollback()
+                return None
+
+            conn.commit()
+            return SyncJob(
+                job_id=row["job_id"],
+                connector_code=row["connector_code"],
+                job_type=row["job_type"],
+                backfill_start_at=row["backfill_start_at"],
+                backfill_end_at=row["backfill_end_at"],
+            )
+
+
+def _finish_job(*, job_id: str, status: str, error_message: str | None = None) -> None:
+    with _connect_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                update app.connector_sync_job
+                set status = %s,
+                    finished_at = now(),
+                    error_message = %s
+                where job_id = %s::uuid
+                """,
+                (status, error_message, job_id),
+            )
+        conn.commit()
+
+
+def _build_metric_dates_for_job(
+    *,
+    job: SyncJob,
+    timezone: ZoneInfo,
+    fetch_window_days: int,
+) -> list[date]:
+    if job.job_type == "backfill_once":
+        if not job.backfill_start_at or not job.backfill_end_at:
+            raise RuntimeError("backfill_once job missing range")
+
+        start_date = job.backfill_start_at.astimezone(timezone).date()
+        end_date = job.backfill_end_at.astimezone(timezone).date()
+        if start_date > end_date:
+            raise RuntimeError("backfill_once range invalid")
+        days = (end_date - start_date).days + 1
+        return [start_date + timedelta(days=index) for index in range(days)]
+
+    now_local_date = datetime.now(timezone).date()
+    return _resolve_metric_dates(now_local_date, days=fetch_window_days)
 
 
 def main() -> None:
     metrics = _resolve_metric_list()
 
-    try:
-        timezone = ZoneInfo(settings.garmin_timezone)
-    except Exception as exc:
-        logger.error("invalid GARMIN_TIMEZONE=%s err=%s", settings.garmin_timezone, exc)
-        timezone = ZoneInfo("UTC")
-
     logger.info(
-        "connector started interval_seconds=%s source_id=%s metrics=%s",
+        "connector scheduler started poll_seconds=%s source_id=%s metrics=%s",
         settings.interval_seconds,
         settings.source_id,
         len(metrics),
@@ -643,23 +846,93 @@ def main() -> None:
         while True:
             start = time.time()
             try:
-                stats = _run_cycle(http_client, timezone=timezone, metrics=metrics)
-                status = "ok" if stats.errors == 0 else "error"
-                update_connector_health(status)
-                logger.info(
-                    "cycle finished status=%s ingested=%s no_data=%s not_supported=%s errors=%s",
-                    status,
-                    stats.ingested,
-                    stats.no_data,
-                    stats.not_supported,
-                    stats.errors,
-                )
+                policy = _load_sync_policy_context()
+                if not policy:
+                    logger.debug("health core source not configured or disabled; skip")
+                else:
+                    _enqueue_auto_job_if_due(policy)
+                    job = _claim_next_job(policy)
+                    if job:
+                        runtime_timezone_name = str(
+                            policy.config_json.get("GARMIN_TIMEZONE", settings.garmin_timezone)
+                        )
+                        try:
+                            runtime_timezone = ZoneInfo(runtime_timezone_name)
+                        except Exception:
+                            logger.warning(
+                                "invalid GARMIN_TIMEZONE from config=%s, fallback=%s",
+                                runtime_timezone_name,
+                                settings.garmin_timezone,
+                            )
+                            runtime_timezone_name = settings.garmin_timezone
+                            runtime_timezone = ZoneInfo(runtime_timezone_name)
+
+                        runtime_fetch_window_days = _coerce_int(
+                            policy.config_json.get(
+                                "GARMIN_FETCH_WINDOW_DAYS",
+                                settings.garmin_fetch_window_days,
+                            ),
+                            default=settings.garmin_fetch_window_days,
+                            minimum=1,
+                            maximum=90,
+                        )
+                        runtime_is_cn = _coerce_bool(
+                            policy.config_json.get("GARMIN_IS_CN", settings.garmin_is_cn),
+                            default=settings.garmin_is_cn,
+                        )
+
+                        metric_dates = _build_metric_dates_for_job(
+                            job=job,
+                            timezone=runtime_timezone,
+                            fetch_window_days=runtime_fetch_window_days,
+                        )
+
+                        logger.info(
+                            "job started job_id=%s job_type=%s date_range=%s..%s",
+                            job.job_id,
+                            job.job_type,
+                            metric_dates[0].isoformat(),
+                            metric_dates[-1].isoformat(),
+                        )
+
+                        stats = _run_cycle(
+                            http_client,
+                            timezone=runtime_timezone,
+                            timezone_name=runtime_timezone_name,
+                            runtime_is_cn=runtime_is_cn,
+                            metrics=metrics,
+                            metric_dates=metric_dates,
+                        )
+                        status = "success" if stats.errors == 0 else "failed"
+                        error_message = None
+                        if stats.errors > 0:
+                            error_message = (
+                                f"ingested={stats.ingested},no_data={stats.no_data},"
+                                f"not_supported={stats.not_supported},errors={stats.errors}"
+                            )
+
+                        _finish_job(
+                            job_id=job.job_id,
+                            status=status,
+                            error_message=error_message,
+                        )
+                        update_connector_health("ok" if stats.errors == 0 else "error")
+
+                        logger.info(
+                            "job finished job_id=%s status=%s ingested=%s no_data=%s not_supported=%s errors=%s",
+                            job.job_id,
+                            status,
+                            stats.ingested,
+                            stats.no_data,
+                            stats.not_supported,
+                            stats.errors,
+                        )
             except Exception as exc:  # pragma: no cover - safety net
-                logger.exception("cycle crashed err=%s", exc)
+                logger.exception("scheduler loop crashed err=%s", exc)
                 update_connector_health("error")
 
             elapsed = time.time() - start
-            sleep_time = max(settings.interval_seconds - elapsed, 0)
+            sleep_time = max(settings.interval_seconds - elapsed, 1)
             time.sleep(sleep_time)
 
 

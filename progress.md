@@ -563,3 +563,129 @@
 
 ### Notes
 - 首次在沙箱内执行 `verify_v0_3_1.sh` 因 Docker socket 权限受限失败，提权重跑后通过。
+
+## Session: 2026-02-28 (v0.4.0 Development)
+
+### Current Status
+- **Phase:** 1 - Requirement & Gap Analysis
+- **Started:** 2026-02-28
+- **Scope:** 读取 v0.4.0 文档并落地开发
+
+### Actions Taken
+- 应用户请求切换到 v0.4.0 开发任务。
+- 启用并执行 `planning-with-files` 技能流程。
+- 会话恢复检查完成（无额外未同步输出）。
+- 重置 `task_plan.md` 到 v0.4.0 实施计划。
+
+### Pending
+- 解析 `docs/product/product_v0.4.0.md` 及关联文档。
+- 代码差距分析并实施开发。
+- 验证与文档同步。
+
+### Requirement Analysis Progress
+- 已完成 `docs/product/product_v0.4.0.md` 全量解析。
+- 已识别 v0.4.0 为跨端全栈版本，需新增 Web + 鉴权 + RBAC + 数据源治理 + 单次回填任务能力。
+- 下一步进入代码基线盘点并产出差距清单。
+
+### Baseline Audit Progress
+- 完成 API/Connector/Compose 代码基线盘点。
+- 完成 `frame_v1.1` 约束确认（前后端分离、客户端作为入口、后端复用能力）。
+- 使用 `ui-ux-pro-max` 产出 Web 设计系统基线（Data-Dense Dashboard）。
+- 确认需新增 v0.4.0 API 与 Run 文档以闭环验收。
+
+### Backend/Core Build Progress
+- 已完成 API v0.4.0 关键接口开发与路由接入。
+- 已完成数据库初始化脚本升级（新增用户、RBAC、系统数据源、同步任务表）。
+- 已完成 connector-worker 调度改造（按核心源策略和任务队列执行）。
+- `python3 -m compileall -q services/api/app services/connector-worker/connector` 通过。
+
+### Verification Progress
+- 完成 Python 代码语法编译检查（API + connector-worker）。
+- 完成 v0.4.0 验收脚本语法检查。
+- 已补齐 v0.4.0 API 文档与运行验收文档。
+- 待运行环境执行：`bash scripts/dev/verify_v0_4_0.sh`。
+
+### Web/Docs Progress
+- 完成 `apps/web` 工程落地并实现 v0.4.0 核心页面。
+- 完成 Docker 新增 `web-client` 服务与相关环境变量补齐。
+- 完成 v0.4.0 API/Run 文档产出与 README 升级。
+
+## Session: 2026-02-28 (v0.4.0 Runtime Bring-up for Acceptance)
+
+### Scope
+- 启动相关 Docker 容器，修复运行时问题，确保可进行用户验收。
+
+### Actions Taken
+- 启动并重建服务：
+  - `docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env up -d --build`
+  - `docker compose ... up -d --build web-client`
+- 修复前端启动错误：
+  - 修改 `apps/web/src/main.tsx` 导入路径：
+    - `@douyinfe/semi-ui/dist/css/semi.min.css`
+    - -> `@douyinfe/semi-ui/lib/es/_base/base.css`
+- 复核容器状态与日志：
+  - `docker compose ... ps`
+  - `docker compose ... logs --tail=... web-client api-service`
+- 运行运行态检查：
+  - 宿主机端口检查 `curl http://localhost:3000`、`curl http://localhost:8000/v1/health/live`
+  - `api-service` 容器内执行 viewer 角色 API 烟测（注册/登录/查询/刷新/登出）
+- 修复验收脚本在非空库下的角色假设问题：
+  - 更新 `scripts/dev/verify_v0_4_0.sh`，自动授予测试账号 `admin` 并重新登录
+  - 重跑脚本后通过
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `docker compose ... ps` | 核心容器运行且 API healthy | all up, `otw-api` healthy | PASS |
+| `docker compose ... logs web-client` | 无依赖扫描错误 | Vite ready，无 `semi.min.css` 报错 | PASS |
+| `curl http://localhost:3000` | 返回 200 | `HTTP/1.1 200 OK` | PASS |
+| `curl http://localhost:8000/v1/health/live` | 返回 200 + `status=ok` | `HTTP/1.1 200 OK` | PASS |
+| viewer API smoke | 核心 viewer 链路成功 | `ALL_VIEWER_API_SMOKE_PASS` | PASS |
+| `bash scripts/dev/verify_v0_4_0.sh` | v0.4.0 官方验收脚本通过 | `[SUMMARY] v0.4.0 verification PASSED` | PASS |
+
+### Notes
+- `viewer` 访问 `health/domain/metrics` 返回 `403 FORBIDDEN` 属于 RBAC 预期行为（缺少 `health.domain.read`）。
+
+## Session: 2026-02-28 (Requirement Gap Fix - Connector Config & RBAC Visibility)
+
+### Scope
+- 基于用户反馈重新对照 v0.4.0 文档，补齐“连接器配置与权限可见性”缺口。
+
+### Actions Taken
+- API：
+  - 放开只读接口权限：
+    - `GET /v1/system-sources` -> 登录可读
+    - `GET /v1/system-sources/{system_code}/sync-jobs` -> 登录可读
+  - 保持写接口 `system_source.write` 约束不变。
+- Web：
+  - `HealthConnectorConfigPage` 新增运行状态区块（最近状态/时间/成功数/失败数）。
+  - `SystemSourcesPage` 增加只读模式（无写权限时禁用所有修改控件并提示）。
+  - `AppFrame` 按权限裁剪健康子模块菜单项，避免展示无权限动作。
+  - `App.tsx` 调整系统数据源页路由为登录可访问（写操作由页面与接口双重限制）。
+- 修复并通过前端构建阻塞项：
+  - `HealthMartPage` `rowKey` 处理 `record` 可能为 `undefined` 的 TS 错误。
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `docker compose ... exec -T web-client npm run build` | Web 构建通过 | passed | PASS |
+| viewer 权限回归 | system-sources/sync-jobs 可读，写接口 403 | 符合预期 | PASS |
+| `bash scripts/dev/verify_v0_4_0.sh` | 全量验收通过 | `[SUMMARY] v0.4.0 verification PASSED` | PASS |
+
+## Session: 2026-03-02 (v0.4.0 Acceptance Closure)
+
+### Scope
+- 用户确认完成验收后，执行版本文档状态收尾与一致性校正。
+
+### Actions Taken
+- 更新 v0.4.0 状态为“已验收（已完成）”：
+  - `README.md`
+  - `docs/product/product_v0.4.0.md`
+  - `docs/api/api_v0.4.0.md`
+  - `docs/run/交付物启动与验收说明_v0.4.0.md`
+  - `services/api/README.md`
+- 在产品/API/运行文档补充验收结论记录（日期：2026-03-02）。
+- 同步 API 文档权限说明与当前实现（GET 登录可读，PUT/POST 需写权限）。
+
+### Outcome
+- v0.4.0 文档闭环完成，版本状态与代码实现一致。

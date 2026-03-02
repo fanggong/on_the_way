@@ -1,15 +1,20 @@
-# API Service (v0.3.1)
+# API Service (v0.4.0)
 
-Version status: `accepted` (`2026-02-27`)
+Version status: `accepted` (`2026-03-02`)
 
-FastAPI service for health connector ingest, annotation, and service health checks.
+FastAPI service for:
+- auth/profile/RBAC
+- system source management and sync jobs
+- health connector ingest + health query APIs
 
-## Endpoints
+## Endpoint Groups
 
-- `POST /v1/ingest/connector-health`
-- `POST /v1/annotation`
-- `GET /v1/health/connector`
-- `GET /v1/health/live`
+- Auth: `/v1/auth/*`
+- Profile: `/v1/profile/me`
+- RBAC: `/v1/rbac/*`
+- System sources: `/v1/system-sources/*`
+- Health query/config: `/v1/health/*`
+- Ingest and annotation: `/v1/ingest/connector-health`, `/v1/annotation`
 
 ## Local Run
 

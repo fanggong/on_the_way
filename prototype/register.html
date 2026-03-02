@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - On The Way</title>
+    <!-- 引入 Google Fonts: Nunito Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/main.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+</head>
+<body>
+    <div class="auth-page">
+        <div class="auth-container">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <i class="ri-user-add-line"></i>
+                </div>
+                <h1 class="auth-title">创建账号</h1>
+                <div class="auth-subtitle">开始您的 OnTheWay 之旅</div>
+            </div>
+            
+            <div class="auth-card">
+                <form id="register-form">
+                    <div class="semi-form-item">
+                        <label class="semi-form-label">邮箱</label>
+                        <input type="email" class="semi-input" placeholder="请输入您的邮箱" required>
+                    </div>
+                    <div class="semi-form-item">
+                        <label class="semi-form-label">密码</label>
+                        <input type="password" class="semi-input" placeholder="请输入您的密码" required>
+                    </div>
+                    <div class="semi-form-item">
+                        <label class="semi-form-label">确认密码</label>
+                        <input type="password" class="semi-input" placeholder="请再次输入您的密码" required>
+                    </div>
+                    <button type="submit" class="semi-btn semi-btn-primary" style="width: 100%; margin-top: 12px;">注册</button>
+                </form>
+            </div>
+            
+            <div class="auth-link">
+                已有账号？ <a href="login.html">立即登录</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="semi-toast-container" id="toast-container"></div>
+
+    <script>
+        // 简单的 Toast 工具函数
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `semi-toast semi-toast-${type}`;
+            
+            let iconClass = 'ri-checkbox-circle-fill';
+            if (type === 'error') iconClass = 'ri-close-circle-fill';
+            if (type === 'warning') iconClass = 'ri-alert-fill';
+            
+            let color = 'var(--semi-color-success)';
+            if (type === 'error') color = 'var(--semi-color-danger)';
+            if (type === 'warning') color = 'var(--semi-color-warning)';
+            
+            toast.innerHTML = `
+                <div class="semi-toast-icon">
+                    <i class="${iconClass}" style="color: ${color}"></i>
+                </div>
+                <div class="semi-toast-content">${message}</div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // 动画进入
+            setTimeout(() => toast.style.transform = 'translateX(0)', 10);
+            
+            // 3秒后消失
+            setTimeout(() => {
+                toast.style.transform = 'translateX(120%)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        document.getElementById('register-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const inputs = this.querySelectorAll('input');
+            const email = inputs[0].value;
+            const password = inputs[1].value;
+            const confirmPassword = inputs[2].value;
+
+            if (password !== confirmPassword) {
+                showToast('两次输入的密码不一致', 'error');
+                return;
+            }
+
+            // 简单的模拟注册
+            const btn = this.querySelector('button');
+            const originalText = btn.textContent;
+            
+            btn.disabled = true;
+            btn.textContent = '注册中...';
+            
+            setTimeout(() => {
+                showToast('注册成功，正在跳转登录页...');
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 1500);
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

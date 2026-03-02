@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semi Design Pro - On The Way</title>
+    <!-- 引入 Google Fonts: Nunito Sans (Phoenix 常用风格) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/main.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- 侧边栏 -->
+        <aside class="semi-layout-sider">
+            <div class="semi-layout-sider-children">
+                <div class="logo-container">
+                    <div class="logo-icon">
+                        <i class="ri-pulse-line"></i>
+                    </div>
+                    <span class="logo-text">OnTheWay</span>
+                </div>
+                
+                <nav class="semi-nav">
+                    <li class="semi-nav-item">
+                        <a href="#" class="semi-nav-item-link active" data-page="home">
+                            <i class="ri-home-4-line semi-nav-icon"></i>
+                            <span class="semi-nav-text">首页</span>
+                        </a>
+                    </li>
+                    <li class="semi-nav-item">
+                        <a href="#" class="semi-nav-item-link" data-page="dashboard">
+                            <i class="ri-dashboard-line semi-nav-icon"></i>
+                            <span class="semi-nav-text">仪表盘</span>
+                        </a>
+                    </li>
+                    <li class="semi-nav-item">
+                        <a href="#" class="semi-nav-item-link" data-page="connectors">
+                            <i class="ri-link-m semi-nav-icon"></i>
+                            <span class="semi-nav-text">连接器配置</span>
+                        </a>
+                    </li>
+                    <li class="semi-nav-item">
+                        <a href="#" class="semi-nav-item-link" data-page="metadata">
+                            <i class="ri-database-2-line semi-nav-icon"></i>
+                            <span class="semi-nav-text">元数据管理</span>
+                        </a>
+                    </li>
+                    <li class="semi-nav-item">
+                        <a href="#" class="semi-nav-item-link" data-page="settings">
+                            <i class="ri-user-settings-line semi-nav-icon"></i>
+                            <span class="semi-nav-text">用户设置</span>
+                        </a>
+                    </li>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- 主体布局 -->
+        <section class="semi-layout">
+            <!-- 顶部导航 -->
+            <header class="semi-layout-header">
+                <div class="header-left">
+                    <div class="icon-btn" id="toggle-sider">
+                        <i class="ri-menu-fold-line"></i>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="icon-btn">
+                        <i class="ri-search-line"></i>
+                    </div>
+                    <div class="icon-btn" id="task-center-btn" style="position: relative;">
+                        <i class="ri-file-list-3-line"></i>
+                        <span id="task-badge" style="display: none; position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; background: #ff4d4f; border-radius: 50%;"></span>
+                    </div>
+                    <div class="icon-btn">
+                        <i class="ri-notification-3-line"></i>
+                    </div>
+                    <div class="user-avatar">
+                        A
+                    </div>
+                </div>
+            </header>
+
+            <!-- 内容区域 -->
+            <main class="semi-layout-content">
+                <!-- 首页 View -->
+                <div id="view-home" class="page-view">
+                    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 70%; color: var(--semi-color-text-2);">
+                        <div style="width: 120px; height: 120px; background: var(--semi-color-bg-1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px;">
+                            <i class="ri-code-s-slash-line" style="font-size: 48px; color: var(--semi-color-primary);"></i>
+                        </div>
+                        <h2 style="font-size: 20px; font-weight: 700; color: var(--semi-color-text-0); margin: 0 0 8px 0;">功能开发中...</h2>
+                        <p style="color: var(--semi-color-text-2); margin: 0;">我们正在努力构建此页面，敬请期待。</p>
+                    </div>
+                </div>
+
+                <!-- 仪表盘 View -->
+                <div id="view-dashboard" class="page-view" style="display: none;">
+                    <div class="semi-tabs-bar">
+                        <div class="semi-tabs-tab active" data-tab="health">健康</div>
+                        <div class="semi-tabs-tab" data-tab="finance">财务</div>
+                        <div class="semi-tabs-tab" data-tab="income">收入</div>
+                        <div class="semi-tabs-tab" data-tab="time">时间</div>
+                        <div class="semi-tabs-tab" data-tab="ability">能力</div>
+                        <div class="semi-tabs-tab" data-tab="relationships">关系</div>
+                        <div class="semi-tabs-tab" data-tab="life">生活</div>
+                        <div class="semi-tabs-tab" data-tab="security">保障</div>
+                    </div>
+                    
+                    <div class="semi-tabs-content">
+                        <!-- 可以在这里放置各标签对应的内容，目前留空或显示通用信息 -->
+                        <div class="tab-pane active">
+                            <div class="semi-card">
+                                <div class="semi-card-header">仪表盘概览</div>
+                                <div style="color: var(--semi-color-text-2);">此处显示仪表盘数据...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 连接器配置 View -->
+                <div id="view-connectors" class="page-view" style="display: none;">
+                    <div class="semi-tabs-bar">
+                        <div class="semi-tabs-tab active" data-tab="health">健康</div>
+                        <div class="semi-tabs-tab" data-tab="finance">财务</div>
+                        <div class="semi-tabs-tab" data-tab="income">收入</div>
+                        <div class="semi-tabs-tab" data-tab="time">时间</div>
+                        <div class="semi-tabs-tab" data-tab="ability">能力</div>
+                        <div class="semi-tabs-tab" data-tab="relationships">关系</div>
+                        <div class="semi-tabs-tab" data-tab="life">生活</div>
+                        <div class="semi-tabs-tab" data-tab="security">保障</div>
+                    </div>
+
+                    <div class="semi-tabs-content">
+                        <div id="connector-content-health" class="tab-pane active">
+                            <div class="semi-card" style="padding: 0; overflow: hidden;">
+                                <div class="semi-card-header" style="padding: 24px; border-bottom: 1px solid var(--semi-color-border); margin-bottom: 0;">连接器列表</div>
+                                <div class="semi-table-wrapper">
+                                    <table class="semi-table">
+                                        <thead>
+                                            <tr>
+                                                <th>连接器名称</th>
+                                                <th>说明</th>
+                                                <th>同步频率</th>
+                                                <th>最近同步时间</th>
+                                                <th>状态</th>
+                                                <th>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                            <td>
+                                                <div style="display: flex; align-items: center;">
+                                                    <i class="ri-run-line" style="font-size: 20px; margin-right: 8px; color: #000;"></i>
+                                                    <span style="font-weight: 600;">Garmin Connect</span>
+                                                </div>
+                                            </td>
+                                            <td style="color: var(--semi-color-text-2);">同步 Garmin 运动数据，如跑步、骑行等</td>
+                                            <td>0 * * * *</td>
+                                            <td>2023-10-27 10:30:00</td>
+                                            <td style="display: flex; align-items: center;">
+                                                <label class="semi-switch">
+                                                    <input type="checkbox" checked class="js-status-switch" data-connector="garmin">
+                                                    <span class="semi-switch-slider"></span>
+                                                </label>
+                                                <span class="semi-tag semi-tag-green js-status-text">运行中</span>
+                                            </td>
+                                            <td>
+                                                <button class="semi-btn semi-btn-secondary js-config-garmin" style="height: 32px; padding: 0 12px; font-size: 13px; margin-right: 8px;">配置</button>
+                                                <button class="semi-btn semi-btn-primary js-sync-data" style="height: 32px; padding: 0 12px; font-size: 13px;">同步数据</button>
+                                            </td>
+                                        </tr>
+                                            <tr>
+                                            <td>
+                                                <div style="display: flex; align-items: center;">
+                                                    <i class="ri-alipay-fill" style="font-size: 20px; margin-right: 8px; color: #1677ff;"></i>
+                                                    <span style="font-weight: 600;">支付宝账单</span>
+                                                </div>
+                                            </td>
+                                            <td style="color: var(--semi-color-text-2);">同步每日消费账单明细</td>
+                                            <td>0 0 * * *</td>
+                                            <td>2023-10-26 23:59:00</td>
+                                            <td style="display: flex; align-items: center;">
+                                                <label class="semi-switch">
+                                                    <input type="checkbox" checked class="js-status-switch" data-connector="alipay">
+                                                    <span class="semi-switch-slider"></span>
+                                                </label>
+                                                <span class="semi-tag semi-tag-green js-status-text">运行中</span>
+                                            </td>
+                                            <td>
+                                                <button class="semi-btn semi-btn-secondary" style="height: 32px; padding: 0 12px; font-size: 13px; margin-right: 8px;">配置</button>
+                                                <button class="semi-btn semi-btn-primary js-sync-data" style="height: 32px; padding: 0 12px; font-size: 13px;">同步数据</button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div style="display: flex; align-items: center;">
+                                                    <i class="ri-google-fill" style="font-size: 20px; margin-right: 8px; color: #ea4335;"></i>
+                                                    <span style="font-weight: 600;">Google Calendar</span>
+                                                </div>
+                                            </td>
+                                            <td style="color: var(--semi-color-text-2);">同步日程安排与时间记录</td>
+                                            <td>* * * * *</td>
+                                            <td>2023-10-27 10:45:12</td>
+                                            <td style="display: flex; align-items: center;">
+                                                <label class="semi-switch">
+                                                    <input type="checkbox" disabled class="js-status-switch" data-connector="google">
+                                                    <span class="semi-switch-slider"></span>
+                                                </label>
+                                                <span class="semi-tag semi-tag-orange js-status-text">未连接</span>
+                                            </td>
+                                            <td>
+                                                <button class="semi-btn semi-btn-secondary" style="height: 32px; padding: 0 12px; font-size: 13px; margin-right: 8px;">配置</button>
+                                                <button class="semi-btn semi-btn-primary js-sync-data" style="height: 32px; padding: 0 12px; font-size: 13px;">同步数据</button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div style="display: flex; align-items: center;">
+                                                    <i class="ri-github-fill" style="font-size: 20px; margin-right: 8px; color: #333;"></i>
+                                                    <span style="font-weight: 600;">GitHub</span>
+                                                </div>
+                                            </td>
+                                            <td style="color: var(--semi-color-text-2);">同步代码提交与贡献记录</td>
+                                            <td>0 0 * * *</td>
+                                            <td>2023-10-27 09:00:00</td>
+                                            <td style="display: flex; align-items: center;">
+                                                <label class="semi-switch">
+                                                    <input type="checkbox" checked class="js-status-switch" data-connector="github">
+                                                    <span class="semi-switch-slider"></span>
+                                                </label>
+                                                <span class="semi-tag semi-tag-green js-status-text">运行中</span>
+                                            </td>
+                                            <td>
+                                                <button class="semi-btn semi-btn-secondary" style="height: 32px; padding: 0 12px; font-size: 13px; margin-right: 8px;">配置</button>
+                                                <button class="semi-btn semi-btn-primary js-sync-data" style="height: 32px; padding: 0 12px; font-size: 13px;">同步数据</button>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="connector-content-placeholder" class="tab-pane" style="display: none;">
+                            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 400px; color: var(--semi-color-text-2);">
+                                <div style="width: 120px; height: 120px; background: var(--semi-color-bg-1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px;">
+                                    <i class="ri-code-s-slash-line" style="font-size: 48px; color: var(--semi-color-primary);"></i>
+                                </div>
+                                <h2 style="font-size: 20px; font-weight: 700; color: var(--semi-color-text-0); margin: 0 0 8px 0;">功能开发中...</h2>
+                                <p style="color: var(--semi-color-text-2); margin: 0;">我们正在努力构建此页面，敬请期待。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 元数据管理 View -->
+                <div id="view-metadata" class="page-view" style="display: none;">
+                    <div class="semi-tabs-bar">
+                        <div class="semi-tabs-tab active" data-tab="health">健康</div>
+                        <div class="semi-tabs-tab" data-tab="finance">财务</div>
+                        <div class="semi-tabs-tab" data-tab="income">收入</div>
+                        <div class="semi-tabs-tab" data-tab="time">时间</div>
+                        <div class="semi-tabs-tab" data-tab="ability">能力</div>
+                        <div class="semi-tabs-tab" data-tab="relationships">关系</div>
+                        <div class="semi-tabs-tab" data-tab="life">生活</div>
+                        <div class="semi-tabs-tab" data-tab="security">保障</div>
+                    </div>
+
+                    <div class="semi-tabs-content">
+                        <div class="tab-pane active">
+                            <div class="semi-card">
+                                <div class="semi-card-header">元数据列表</div>
+                                <div style="color: var(--semi-color-text-2);">此处管理各类元数据...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 用户设置 View -->
+                <div id="view-settings" class="page-view" style="display: none;">
+                    <div class="semi-card">
+                        <div class="semi-card-header">基本设置</div>
+                        <div style="color: var(--semi-color-text-2);">用户偏好设置...</div>
+                    </div>
+                </div>
+            </main>
+        </section>
+    </div>
+
+    <div class="semi-modal-mask" id="config-modal" style="display: none;">
+        <div class="semi-modal">
+            <div class="semi-modal-header">
+                <span class="semi-modal-title">配置 Garmin Connect</span>
+                <button class="semi-btn-icon semi-modal-close" id="modal-close"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="semi-modal-body">
+                <div class="semi-form-item">
+                    <label class="semi-form-label">账号</label>
+                    <input type="text" class="semi-input" placeholder="请输入 Garmin 账号">
+                </div>
+                <div class="semi-form-item">
+                    <label class="semi-form-label">密码</label>
+                    <input type="password" class="semi-input" placeholder="请输入密码">
+                </div>
+                <div class="semi-form-item">
+                    <label class="semi-form-label">同步频率 (Crontab)</label>
+                    <input type="text" class="semi-input" placeholder="例如: 0 * * * *" value="0 * * * *">
+                </div>
+            </div>
+            <div class="semi-modal-footer" style="justify-content: space-between;">
+                <button class="semi-btn semi-btn-secondary" id="modal-test-conn" type="button">测试连接</button>
+                <div style="display: flex; gap: 12px;">
+                    <button class="semi-btn semi-btn-secondary" id="modal-cancel">取消</button>
+                    <button class="semi-btn semi-btn-primary" id="modal-confirm">确认</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync Data Modal -->
+    <div class="semi-modal-mask" id="sync-modal" style="display: none;">
+        <div class="semi-modal">
+            <div class="semi-modal-header">
+                <span class="semi-modal-title">同步数据</span>
+                <button class="semi-btn-icon semi-modal-close" id="sync-modal-close"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="semi-modal-body">
+                <div class="semi-form-item">
+                    <label class="semi-form-label">数据回填天数</label>
+                    <input type="number" class="semi-input" id="sync-days-input" placeholder="请输入天数" value="30">
+                    <div style="font-size: 12px; color: var(--semi-color-text-2); margin-top: 4px;">选择要同步过去多少天的数据</div>
+                </div>
+            </div>
+            <div class="semi-modal-footer">
+                <button class="semi-btn semi-btn-secondary" id="sync-modal-cancel">取消</button>
+                <button class="semi-btn semi-btn-primary" id="sync-modal-confirm">开始同步</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Drawer -->
+    <div class="semi-drawer-mask" id="task-drawer-mask" style="display: none;">
+        <div class="semi-drawer">
+            <div class="semi-drawer-header">
+                <span class="semi-drawer-title">任务中心</span>
+                <button class="semi-btn-icon semi-drawer-close" id="task-drawer-close"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="semi-drawer-body">
+                <div class="task-list" id="task-list">
+                    <!-- Tasks will be injected here -->
+                    <!-- Example Task
+                    <div class="task-item">
+                        <div class="task-item-header">
+                            <span class="task-title">同步 Garmin Connect 数据</span>
+                            <span class="semi-tag semi-tag-blue">进行中</span>
+                        </div>
+                        <div class="task-progress-wrapper">
+                            <div class="task-progress-bar" style="width: 45%"></div>
+                        </div>
+                        <div class="task-meta">
+                            <span>2023-10-27 12:30:00</span>
+                            <span>45%</span>
+                        </div>
+                    </div>
+                    -->
+                    <div class="empty-state" id="task-empty-state" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; color: var(--semi-color-text-2);">
+                        <i class="ri-inbox-line" style="font-size: 48px; margin-bottom: 12px; opacity: 0.5;"></i>
+                        <span>暂无任务</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts/app.js"></script>
+</body>
+</html>

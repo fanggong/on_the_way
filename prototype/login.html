@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - On The Way</title>
+    <!-- 引入 Google Fonts: Nunito Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/main.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+</head>
+<body>
+    <div class="auth-page">
+        <div class="auth-container">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <i class="ri-pulse-line"></i>
+                </div>
+                <h1 class="auth-title">欢迎回来</h1>
+                <div class="auth-subtitle">登录您的 OnTheWay 账号</div>
+            </div>
+            
+            <div class="auth-card">
+                <form id="login-form">
+                    <div class="semi-form-item">
+                        <label class="semi-form-label">邮箱</label>
+                        <input type="email" class="semi-input" placeholder="请输入您的邮箱" required>
+                    </div>
+                    <div class="semi-form-item">
+                        <label class="semi-form-label">密码</label>
+                        <input type="password" class="semi-input" placeholder="请输入您的密码" required>
+                    </div>
+                    <button type="submit" class="semi-btn semi-btn-primary" style="width: 100%; margin-top: 12px;">登录</button>
+                </form>
+            </div>
+            
+            <div class="auth-link">
+                还没有账号？ <a href="register.html">立即注册</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            // 简单的模拟登录
+            const btn = this.querySelector('button');
+            const originalText = btn.textContent;
+            
+            btn.disabled = true;
+            btn.textContent = '登录中...';
+            
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

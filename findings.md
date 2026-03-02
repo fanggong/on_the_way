@@ -479,3 +479,153 @@
 
 ### Final Verification
 - `bash scripts/dev/verify_v0_3_1.sh` 通过（含 OpenMetadata legacy metadata removed 检查项）。
+
+---
+
+## v0.4.0 Session Kickoff Findings (2026-02-28)
+
+- 本轮任务目标已切换为 `v0.4.0` 实施，需以 `docs/product/product_v0.4.0.md` 为主边界。
+- 现有仓库规划文件仍为历史版本，已重置 `task_plan.md` 到 v0.4.0 目标。
+- 当前尚未确认 v0.4.0 的具体功能清单，下一步需读取 product/api/run 文档形成差距矩阵。
+
+## v0.4.0 Product Requirement Extraction (2026-02-28)
+
+### Core delivery scope
+- 新增 `apps/web` React 客户端并纳入 Docker 一键启动。
+- 后端新增认证闭环：注册/登录/刷新/登出/当前用户。
+- 首次登录资料完善强制流（`profile_completed=false` 时必须先完成资料）。
+- 新增 RBAC（角色/权限/接口鉴权 + 前端路由与动作控制）。
+- 新增系统数据源管理能力：
+  - 8 系统统一管理
+  - 每系统唯一核心连接器
+  - 核心连接器自动同步策略
+  - 单次回填任务（`job_type=backfill_once`）
+- 健康模块可用（连接器配置、Domain 查询、Mart 展示）；其余 7 系统仅占位“开发中”。
+- 新增开发环境历史数据清空任务与校验。
+
+### Architecture/constraint highlights
+- 前后端物理隔离：前端在 `apps/*`，后端在 `services/data/infra`。
+- 自动同步频率唯一入口为 `system-sources/sync-policy`。
+- 开发/联调阶段默认 `auto_sync_enabled=false`。
+- 保留 `POST /v1/ingest/connector-health`，不破坏 v0.3.1 数据链路。
+
+### Implementation risk snapshot
+- 需求跨度覆盖 Web + API + DB + 调度 + 运维脚本，需分阶段落地并持续验证。
+- 当前文档尚无 `api_v0.4.0` 与 `run_v0.4.0`，后续应补齐以支撑验收闭环。
+
+## v0.4.0 Codebase Gap Matrix (2026-02-28)
+
+- `apps/web` 当前不存在，需新建完整 React + TypeScript Web 客户端工程。
+- `services/api` 当前仅具备 v0.3.1 ingest/annotation/health 接口，缺失：
+  - `auth/profile` 全套接口
+  - RBAC 接口
+  - system-sources/sync-policy/sync-jobs 接口
+  - 健康查询与连接器配置接口（domain/mart/config）
+- `app` schema 现状仅有 `request_audit` 与 `connector_health`，缺失 v0.4.0 所需用户、会话、角色权限、系统数据源、同步任务等表。
+- `connector-worker` 目前为固定周期循环模式，尚未对接“核心连接器同步策略”与“单次回填任务队列”能力。
+- `docker-compose` 尚无 `web-client` 服务，环境变量缺少鉴权相关配置。
+- 文档现状：已有 `product_v0.4.0` 与 `frame_v1.1`，但缺少 `api_v0.4.0` 与 `run_v0.4.0`。
+
+## v0.4.0 UI/UX Baseline (ui-ux-pro-max)
+
+- 推荐模式：Data-Dense Dashboard（信息密度高的后台布局）。
+- 视觉基线：浅色背景 + 高对比文本 + 蓝橙功能色。
+- 字体方向：`Fira Sans`（正文）+ `Fira Code`（数值/代码态信息）。
+- 必须项：键盘焦点可见、44px 点击面积、减少动画偏好支持、响应式断点覆盖。
+
+## v0.4.0 Backend/Core Implementation Findings (2026-02-28)
+
+- API 已补齐核心能力：
+  - `auth`: register/login/refresh/logout/me
+  - `profile`: get/put me
+  - `rbac`: me-permissions/users/assign-roles
+  - `system-sources`: 列表、核心源设置、connector 启停、sync-policy、sync-jobs
+  - `health`: connector config、domain metrics、mart overview/metric-summary/activity-topics
+- 新增认证与安全能力：
+  - Argon2 密码哈希
+  - JWT access/refresh
+  - refresh session 持久化与撤销
+  - 登录/注册基础限流
+- `init_db` 已升级到 v0.4.0 所需 app 表结构（账号、角色权限、系统数据源、同步任务）并预置健康连接器选项。
+- `connector-worker` 已改为“策略+任务驱动”模式：
+  - 根据 `system_core_source` / `sync-policy` 决定是否运行
+  - 支持 `auto_sync` 自动任务入队
+  - 支持消费 `backfill_once` 单次回填任务并回写状态
+  - 运行配置支持读取 `config_json`（时区、窗口、CN 标识）
+
+## v0.4.0 Verification Findings (2026-02-28)
+
+- 已执行静态/语法级验证：
+  - `python3 -m compileall -q services/api/app services/connector-worker/connector` 通过。
+  - `bash -n scripts/dev/verify_v0_4_0.sh` 通过。
+- 已新增验证与清理资产：
+  - `scripts/dev/verify_v0_4_0.sh`
+  - `scripts/dev/reset_dev_data_v0_4_0.sql`
+- 本轮未在当前环境执行整套 Docker 运行态验收（未启动全量服务栈），需由运行环境执行 `verify_v0_4_0.sh` 完成端到端确认。
+
+## v0.4.0 Web & Docs Completion Findings (2026-02-28)
+
+- 已新增 `apps/web` 完整工程并接入核心页面：
+  - 登录/注册/资料维护
+  - 后台主框架与 8 系统导航
+  - 系统数据源管理（核心源、同步策略、回填任务）
+  - 健康连接器配置、Domain 查询、Mart 展示
+  - 7 个非健康模块占位页（开发中）
+- 已将 Web 服务接入 `infra/docker/docker-compose.yml`（`web-client`）。
+- 已补齐 v0.4.0 交付文档：
+  - `docs/api/api_v0.4.0.md`
+  - `docs/run/交付物启动与验收说明_v0.4.0.md`
+- `docs/product/product_v0.4.0.md` 状态已同步为 `已实现（待验收）`。
+
+## v0.4.0 Runtime Bring-up Findings (2026-02-28)
+
+- Docker 栈已在本机成功启动并稳定运行：
+  - `otw-api` healthy（`8000`）
+  - `otw-web` running（`3000`）
+  - `otw-connector` running
+  - `otw-dbt` healthy
+  - OpenMetadata 相关容器 healthy
+- 前端启动失败根因确认并修复：
+  - 旧导入路径 `@douyinfe/semi-ui/dist/css/semi.min.css` 在 `@douyinfe/semi-ui@2.91.0` 不再导出
+  - 已改为 `@douyinfe/semi-ui/lib/es/_base/base.css`
+  - 修复后 `vite` 正常启动，无依赖扫描报错
+- 本机端口可达性验证通过：
+  - `http://localhost:3000` -> `HTTP/1.1 200 OK`
+  - `http://localhost:8000/v1/health/live` -> `HTTP/1.1 200 OK`
+- API viewer 角色烟测通过：
+  - `auth/register`、`auth/login`、`auth/me`、`rbac/me-permissions`
+  - `health/connectors/config`、`health/mart/overview|metric-summary|activity-topics`
+  - `auth/refresh`、`auth/logout`
+- 权限模型符合设计：
+  - viewer 对 `health/domain/metrics` 返回 `403 FORBIDDEN`（预期，需 `health.domain.read`）
+- `scripts/dev/verify_v0_4_0.sh` 已增强为可在“非空数据库”中稳定运行：
+  - 自动为验收测试账号授予 `admin` 角色
+  - 重新登录刷新 token 后继续执行管理与 Domain 验收
+  - 最新执行结果：`[SUMMARY] v0.4.0 verification PASSED`
+
+## v0.4.0 Requirement Gap Fixes (2026-02-28)
+
+- 按产品文档复核后补齐：
+  - 健康连接器配置页新增“最近运行状态/最近执行时间/累计成功/累计失败”展示（对齐 `GET /v1/health/connector`）。
+  - 系统数据源页支持“登录用户可读、仅 `system_source.write` 可改”，避免无权限用户误判为“功能缺失”。
+  - 系统数据源页所有写操作控件已按权限禁用并显示明确只读提示。
+  - 导航菜单按 RBAC 权限裁剪（隐藏无权限健康子模块动作）。
+- API 权限收敛调整：
+  - `GET /v1/system-sources` 改为登录可读。
+  - `GET /v1/system-sources/{system_code}/sync-jobs` 改为登录可读。
+  - `PUT/POST` 写操作仍要求 `system_source.write`。
+- 验证结果：
+  - viewer 账号：`system-sources` / `sync-jobs` 可读，写接口返回 `403`（符合预期）。
+  - `bash scripts/dev/verify_v0_4_0.sh` 仍为 `PASSED`。
+
+## v0.4.0 Acceptance Closure Findings (2026-03-02)
+
+- 用户已确认“完成验收”。
+- 文档状态已统一收口为 `已验收（已完成）`：
+  - `README.md`
+  - `docs/product/product_v0.4.0.md`
+  - `docs/api/api_v0.4.0.md`
+  - `docs/run/交付物启动与验收说明_v0.4.0.md`
+  - `services/api/README.md`
+- 文档与实现一致性修正：
+  - `system-sources` 读接口（GET）为登录可读，写接口（PUT/POST）需 `system_source.write`。

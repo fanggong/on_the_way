@@ -1,70 +1,55 @@
-# Task Plan: on_the_way v0.3.1 Implementation
+# Task Plan: on_the_way v0.4.0 Implementation
 
 ## Goal
-基于 `docs/product/product_v0.3.1.md` 完成完整落地开发：
-- 健康链路 `raw -> canonical -> domain_health -> mart` 建模
-- POC (`poc_signal`) 代码与数据库对象退役
-- 表/字段注释与 OpenMetadata 采集范围改造
-- 文档同步到 `v0.3.1` 可验收状态
+基于 `docs/` 中 v0.4.0 相关文档，完成可运行、可验证、可交付的 `v0.4.0` 版本开发；
+若开发落地与产品文档冲突，先整理冲突点并向用户确认后再更新文档。
 
 ## Current Phase
-Completed (Closure Finished)
+Phase 4 - Docs & Closure (complete)
 
 ## Phases
 
-### Phase 1: Gap Analysis & Design Lock
-- [x] 对齐 `product_v0.3.1` 与当前代码差距
-- [x] 识别 POC 遗留点（API/dbt/iOS/DB/OpenMetadata）
-- [x] 确定实施顺序与默认假设（annotation 保留并改面向 health）
+### Phase 1: Requirement & Gap Analysis
+- [x] 读取 `docs/product/product_v0.4.0.md` 与关联 API/run/frame 文档
+- [x] 盘点代码现状与文档差距
+- [x] 输出可执行实施清单与风险点
 - **Status:** complete
 
-### Phase 2: Data Layer Implementation
-- [x] 新增 health Canonical 模型（event/metric/activity）
-- [x] 新增 health Domain 模型（metric/activity fact）
-- [x] 新增 health Mart 模型（daily summary/overview/activity topic）
-- [x] 删除 POC dbt 模型、测试与项目配置
-- [x] 补齐 dbt `schema.yml` 描述并启用 `persist_docs`
+### Phase 2: Core Implementation
+- [x] 完成 API 鉴权/RBAC/系统数据源/同步任务/健康查询核心改造
+- [x] 完成 connector-worker 调度改造（核心策略 + job 队列驱动）
+- [x] 完成 Web 客户端 `apps/web` 与 Docker 接入
+- [x] 补充必要配置与迁移脚本
+- [x] 保持向后兼容边界在文档约束范围内
 - **Status:** complete
 
-### Phase 3: API / DB / iOS Cleanup
-- [x] 下线 POC ingest/query API
-- [x] annotation 从 `signal_event` 切换到 health 目标
-- [x] 数据库初始化 SQL 执行 POC 退役清理并补 COMMENT
-- [x] iOS 删除调试入口与 POC 页面/调用
+### Phase 3: Verification
+- [x] 运行静态检查与关键测试
+- [x] 运行 v0.4.0 关键链路验收命令
+- [x] 记录失败项、修复与复验结果
 - **Status:** complete
 
-### Phase 4: Metadata & Docs Alignment
-- [x] OpenMetadata ingestion schema 白名单更新
-- [x] 新增/更新 v0.3.1 API 与运行验收文档
-- [x] README / 模块 README 状态与范围同步
-- **Status:** complete
-
-### Phase 5: Verification
-- [x] Python 代码编译检查
-- [x] iOS lint/test/type-check（可执行时）
-- [x] dbt 配置静态检查（可执行时）
-- [x] 产出变更总结与后续风险
-- **Status:** complete
-
-### Phase 6: Version Closure
-- [x] 清理本版本确认死代码（未使用配置字段）
-- [x] 文档状态统一为已验收完成
-- [x] 收尾记录补齐（含 OpenMetadata 遗留元数据清理结果）
+### Phase 4: Docs & Closure
+- [x] 同步 README / run / api 等文档到 v0.4.0 现状
+- [x] 如与 product 文档冲突，先征求用户确认后修改对应文档
+- [x] 形成交付总结与后续建议
 - **Status:** complete
 
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
-| 优先做 dbt + API/DB 的“退役与替换” | POC 删除会影响接口、注释、OpenMetadata 范围，需要一体化改造。 |
-| annotation 不下线，切换到 health 目标对象 | 保留框架中“人工标注”能力，避免接口成为死功能。 |
-| iOS 仅保留 v0.2.0 首页 | 符合 v0.3.1 “删除 POC 调试能力”要求。 |
+| 先锁定 v0.4.0 文档边界，再编码 | 避免在高耦合模块中返工。 |
+| 先收敛冲突点再改 product 文档 | 符合“先征求确认”的协作约束。 |
 
 ## Open Questions for User Confirmation
 | Question | Current Assumption |
 |----------|--------------------|
-| None | - |
+| 当前无 | 先按文档实现，发现冲突后即时提出。 |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
-| None | - | - |
+| `web-client` 启动时报 `@douyinfe/semi-ui/dist/css/semi.min.css` 未导出 | 1 | 将 `apps/web/src/main.tsx` 改为导入 `@douyinfe/semi-ui/lib/es/_base/base.css`。 |
+| 沙箱内部分 Docker socket 调用被拒绝 | 1 | 按权限流程提权执行关键验收命令。 |
+| `verify_v0_4_0.sh` 在非空库中出现 RBAC 403 | 1 | 脚本自动为测试账号授予 `admin` 后重新登录，复验通过。 |
+| 需求复核发现连接器配置状态展示与系统源只读体验不完整 | 1 | 增加健康连接器状态展示、放开系统源读接口、补齐前端只读/禁用逻辑。 |

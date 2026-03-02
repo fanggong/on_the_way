@@ -106,9 +106,9 @@ def load_settings() -> ConnectorSettings:
     return ConnectorSettings(
         api_base_url=os.getenv("API_BASE_URL", "http://api-service:8000"),
         ingest_path=os.getenv("CONNECTOR_INGEST_PATH", "/v1/ingest/connector-health"),
-        interval_seconds=_positive_int_env("CONNECTOR_INTERVAL_SECONDS", "3600"),
+        interval_seconds=_positive_int_env("CONNECTOR_INTERVAL_SECONDS", "30"),
         source_id="garmin_connect_health",
-        connector_version=os.getenv("CONNECTOR_VERSION", "v0.3.1"),
+        connector_version=os.getenv("CONNECTOR_VERSION", "v0.4.0"),
         request_timeout_seconds=_positive_int_env(
             "CONNECTOR_REQUEST_TIMEOUT_SECONDS", "10"
         ),

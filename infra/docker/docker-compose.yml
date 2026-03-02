@@ -31,8 +31,13 @@ services:
       APP_ENV: ${APP_ENV:-dev}
       API_PORT: ${API_PORT:-8000}
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://otw:otw_dev_password@postgres:5432/otw_dev}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       REQUEST_FUTURE_TOLERANCE_MINUTES: ${REQUEST_FUTURE_TOLERANCE_MINUTES:-5}
       GARMIN_EMAIL: ${GARMIN_EMAIL:-}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-otw-dev-secret-change-me}
+      AUTH_ACCESS_EXPIRES_MINUTES: ${AUTH_ACCESS_EXPIRES_MINUTES:-30}
+      AUTH_REFRESH_EXPIRES_DAYS: ${AUTH_REFRESH_EXPIRES_DAYS:-7}
+      AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:-30}
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
@@ -56,8 +61,8 @@ services:
     environment:
       API_BASE_URL: ${CONNECTOR_API_BASE_URL:-http://api-service:8000}
       CONNECTOR_INGEST_PATH: ${CONNECTOR_INGEST_PATH:-/v1/ingest/connector-health}
-      CONNECTOR_INTERVAL_SECONDS: ${CONNECTOR_INTERVAL_SECONDS:-3600}
-      CONNECTOR_VERSION: ${CONNECTOR_VERSION:-v0.3.1}
+      CONNECTOR_INTERVAL_SECONDS: ${CONNECTOR_INTERVAL_SECONDS:-30}
+      CONNECTOR_VERSION: ${CONNECTOR_VERSION:-v0.4.0}
       CONNECTOR_REQUEST_TIMEOUT_SECONDS: ${CONNECTOR_REQUEST_TIMEOUT_SECONDS:-10}
       CONNECTOR_RETRY_ATTEMPTS: ${CONNECTOR_RETRY_ATTEMPTS:-3}
       GARMIN_EMAIL: ${GARMIN_EMAIL:-}
@@ -74,6 +79,23 @@ services:
       api-service:
         condition: service_healthy
       postgres:
+        condition: service_healthy
+
+  web-client:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        ALL_PROXY: ${ALL_PROXY:-}
+    container_name: otw-web
+    environment:
+      VITE_API_BASE_URL: ${WEB_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      api-service:
         condition: service_healthy
 
   dbt-runner:
